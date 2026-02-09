@@ -6,12 +6,18 @@
     <title>10k em Silêncio</title>
     
     <!-- === PWA & CONFIGURAÇÕES GERAIS === -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦅</text></svg>">
-    <link rel="apple-touch-icon" href="icon.png">
+    
+    <!-- Ícone com ?v=3 para forçar o Android a esquecer a águia -->
+    <link rel="icon" type="image/png" href="icon.png?v=3">
+    <link rel="apple-touch-icon" href="icon.png?v=3">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Manifesto atualizado para forçar atualização do ícone -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"10k em Silêncio","short_name":"10k","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#10b981","icons":[{"src":"icon.png?v=3","sizes":"512x512","type":"image/png"}]}'>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -854,7 +860,7 @@
                         {/* O Grande Vilão */}
                         <div className="bg-white rounded-xl border-l-4 border-rose-500 shadow-sm p-5 relative mb-6">
                             <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-bold text-slate-800 text-lg">{biggestLeak.name}</h3>
+                                <h3 className="font-bold text-slate-800 text-lg">{topLeak.name}</h3>
                                 <span className="bg-rose-100 text-rose-700 text-xs font-bold px-2 py-1 rounded">
                                     R$ {expenses[biggestLeak.id]}/mês
                                 </span>
@@ -2342,6 +2348,4 @@
         root.render(<SuperApp />);
     </script>
 </body>
-
 </html>
-<!-- Forçando atualização -->
