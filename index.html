@@ -2,11 +2,12 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport ajustado para comportamento de app nativo -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>10k em Silêncio</title>
     
-    <!-- === PWA & ÍCONES === -->
+    <!-- === PWA & CONFIGURAÇÕES GERAIS === -->
+    
+    <!-- Ícone com ?v=3 para forçar o Android a esquecer a águia -->
     <link rel="icon" type="image/png" href="icon.png?v=3">
     <link rel="apple-touch-icon" href="icon.png?v=3">
     
@@ -15,7 +16,8 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     
-    <link rel="manifest" href='data:application/manifest+json,{"name":"10k em Silêncio","short_name":"10k","start_url":".","display":"standalone","orientation":"portrait","background_color":"#0f172a","theme_color":"#10b981","icons":[{"src":"icon.png?v=3","sizes":"512x512","type":"image/png"}]}'>
+    <!-- Manifesto atualizado para forçar atualização do ícone -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"10k em Silêncio","short_name":"10k","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#10b981","icons":[{"src":"icon.png?v=3","sizes":"512x512","type":"image/png"}]}'>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -44,7 +46,7 @@
         }
     </script>
 
-    <!-- ImportMap -->
+    <!-- ImportMap: React, Lucide e Recharts -->
     <script type="importmap">
     {
         "imports": {
@@ -61,25 +63,15 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* Trava a rolagem do body para evitar barra de URL no Android */
-        html, body { 
-            height: 100%; 
-            width: 100%;
-            overflow: hidden; 
-            overscroll-behavior-y: none; 
-            background-color: #0f172a;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }
-        
+        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; background-color: #0f172a; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-50 flex justify-center">
+<body class="bg-slate-900 text-slate-50 min-h-screen flex justify-center">
 
-    <div id="root" class="w-full max-w-md h-full relative bg-slate-900 shadow-2xl overflow-hidden"></div>
+    <div id="root" class="w-full max-w-md h-full min-h-screen relative bg-slate-900 shadow-2xl overflow-hidden"></div>
 
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useMemo } from 'react';
@@ -94,6 +86,7 @@
 
         function cn(...inputs) { return twMerge(clsx(inputs)); }
         
+        // Extração dos ícones necessários para TODOS os apps
         const { 
             Trophy, Target, TrendingUp, Shield, Crown, Ghost, Lock, Unlock, 
             Plus, History, Trash2, AlertTriangle, Wallet, ArrowRight, Save, 
@@ -102,109 +95,51 @@
             ShoppingBag, Coffee, Smartphone, Car, CreditCard, ShieldCheck, 
             Zap, Clock, Briefcase, Calendar, ShieldBan, Copy, Check, MessageSquare, 
             Shuffle, Banknote, RotateCcw, Settings, XCircle, ArrowLeftRight, Sun, 
-            Percent, RefreshCw, RefreshCcw, BookOpen, AlertCircle, DollarSign, PiggyBank,
-            Download, Share
+            Percent, RefreshCw, RefreshCcw, BookOpen, AlertCircle, DollarSign, PiggyBank
         } = LucideIcons;
 
-        // --- Prompt de Instalação ---
-        function InstallPrompt() {
-            const [showPrompt, setShowPrompt] = useState(false);
-            const [deferredPrompt, setDeferredPrompt] = useState(null);
-            const [isIOS, setIsIOS] = useState(false);
-
-            useEffect(() => {
-                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-                const hasSeenPrompt = localStorage.getItem('install_prompt_seen_v2');
-                if (isStandalone || hasSeenPrompt) return;
-
-                const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-                setIsIOS(ios);
-
-                if (ios) {
-                    setShowPrompt(true);
-                } else {
-                    const handleBeforeInstallPrompt = (e) => {
-                        e.preventDefault();
-                        setDeferredPrompt(e);
-                        setShowPrompt(true);
-                    };
-                    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-                    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-                }
-            }, []);
-
-            const handleInstallClick = async () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') setShowPrompt(false);
-                    setDeferredPrompt(null);
-                }
-            };
-
-            const handleDismiss = () => {
-                setShowPrompt(false);
-                localStorage.setItem('install_prompt_seen_v2', 'true');
-            };
-
-            if (!showPrompt) return null;
-
-            return (
-                <div className="absolute inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4 pb-8">
-                    <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-slide-up">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-emerald-400 border border-slate-700 shadow-md"><span className="text-2xl">🦅</span></div>
-                                <div><h3 className="text-lg font-bold text-slate-900">Instalar App</h3><p className="text-xs text-slate-500">10k em Silêncio</p></div>
-                            </div>
-                            <button onClick={handleDismiss} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
-                        </div>
-                        {isIOS ? (
-                            <div className="space-y-3">
-                                <p className="text-sm text-slate-600">Para instalar no iPhone:</p>
-                                <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">1. Toque em <Share size={16} className="text-blue-500" /> <strong>Compartilhar</strong></div>
-                                <div className="flex items-center gap-3 text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">2. Escolha <span className="flex items-center gap-1 font-bold"><Plus size={14} className="border border-black rounded-[4px] p-px" /> Adicionar à Tela de Início</span></div>
-                                <button onClick={handleDismiss} className="w-full mt-2 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl">Entendi</button>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <p className="text-sm text-slate-600">Adicione à sua tela inicial para acesso rápido e tela cheia.</p>
-                                <button onClick={handleInstallClick} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Download size={20} />Instalar Agora</button>
-                                <button onClick={handleDismiss} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-600">Agora não</button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        // --- Utils Comuns ---
-        const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-
         // ==========================================
-        // 1. EMPILHADOR
+        // MÓDULO 1: EMPILHADOR DE DINHEIRO
         // ==========================================
+        
         const EMPILHADOR_LEVELS = [
-          { id: 1, threshold: 0, title: "Novato Consciente", icon: Wallet, color: "text-slate-500", bg: "bg-slate-100" },
-          { id: 2, threshold: 20, title: "O Invisível", icon: Ghost, color: "text-blue-500", bg: "bg-blue-100" },
-          { id: 3, threshold: 50, title: "Escudo de Proteção", icon: Shield, color: "text-emerald-500", bg: "bg-emerald-100" },
-          { id: 4, threshold: 75, title: "Guerreiro Intocável", icon: Trophy, color: "text-purple-500", bg: "bg-purple-100" },
-          { id: 5, threshold: 100, title: "Soberano da Liberdade", icon: Crown, color: "text-amber-500", bg: "bg-amber-100" },
+          { id: 1, threshold: 0, title: "Novato Consciente", desc: "O despertar financeiro começou.", icon: Wallet, color: "text-slate-500", bg: "bg-slate-100" },
+          { id: 2, threshold: 20, title: "O Invisível", desc: "Reservas ocultas. O perigo passa longe.", icon: Ghost, color: "text-blue-500", bg: "bg-blue-100" },
+          { id: 3, threshold: 50, title: "Escudo de Proteção", desc: "Metade do caminho. Você está blindado.", icon: Shield, color: "text-emerald-500", bg: "bg-emerald-100" },
+          { id: 4, threshold: 75, title: "Guerreiro Intocável", desc: "Sua liberdade está quase construída.", icon: Trophy, color: "text-purple-500", bg: "bg-purple-100" },
+          { id: 5, threshold: 100, title: "Soberano da Liberdade", desc: "Você venceu o jogo. O tesouro é seu.", icon: Crown, color: "text-amber-500", bg: "bg-amber-100" },
         ];
-        const EMPILHADOR_QUOTES = ["Cada centavo é um soldado.", "O futuro agradece.", "Persistência é o segredo.", "Dinheiro guardado é tranquilidade.", "O hábito vale mais que a intensidade."];
+
+        const EMPILHADOR_QUOTES = [
+          "Cada centavo é um soldado na sua luta pela liberdade.",
+          "O futuro agradece o que você está fazendo agora.",
+          "Persistência é o segredo dos vencedores.",
+          "Você está construindo seu império, tijolo por tijolo.",
+          "Disciplina é escolher o que você quer agora vs o que você quer mais.",
+          "A liberdade financeira não é um sonho, é matemática e hábito.",
+          "Pequenos progressos diários somam grandes resultados.",
+          "Dinheiro guardado é semente de tranquilidade.",
+          "Sua versão do futuro está orgulhosa de você.",
+          "O hábito vale mais que a intensidade."
+        ];
+
+        const formatCurrency = (value) => {
+          return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        };
 
         function Empilhador_CreateUser({ onBack, onCreate }) {
             const [name, setName] = useState('');
             const [goal, setGoal] = useState('');
             const handleSubmit = (e) => { e.preventDefault(); if (name && goal) { const goalVal = parseFloat(goal.replace(/\./g, '').replace(',', '.')); if (goalVal > 0) onCreate(name, goalVal); } };
+            
             return (
-                <div className="w-full h-full bg-white p-6 flex flex-col pb-24 overflow-y-auto animate-fade-in">
-                    <button onClick={onBack} className="self-start text-slate-400 mb-6 flex items-center gap-1 text-sm font-medium"><ArrowLeft size={18} /> Voltar</button>
-                    <div className="text-center mb-8"><div className="w-16 h-16 bg-emerald-100 rounded-full flex justify-center items-center mx-auto mb-4"><Target className="w-8 h-8 text-emerald-600" /></div><h1 className="text-2xl font-bold text-slate-800">Defina seu Tesouro</h1></div>
+                <div className="w-full h-screen sm:h-[700px] bg-white sm:rounded-3xl shadow-xl border border-slate-100 p-6 flex flex-col animate-fade-in pb-24">
+                    <button onClick={onBack} className="self-start text-slate-400 hover:text-slate-800 mb-6 flex items-center gap-1 text-sm font-medium pt-4 sm:pt-0"><ArrowLeft size={18} /> Voltar</button>
+                    <div className="text-center mb-8"><div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4"><Target className="w-8 h-8 text-emerald-600" /></div><h1 className="text-2xl font-bold text-slate-800">Defina seu Tesouro</h1><p className="text-slate-500 mt-2 text-sm">Para quem é este cofre e qual é o objetivo?</p></div>
                     <form onSubmit={handleSubmit} className="space-y-4 flex-1">
-                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Nome do Perfil</label><input type="text" className="w-full p-4 border rounded-xl text-slate-900" value={name} onChange={e => setName(e.target.value)} required /></div>
-                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Meta (R$)</label><input type="number" className="w-full p-4 border rounded-xl text-slate-900" value={goal} onChange={e => setGoal(e.target.value)} required /></div>
-                        <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl mt-4">Criar Cofre</button>
+                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Nome do Perfil</label><input type="text" placeholder="Ex: Minha Aposentadoria, Faculdade do Enzo..." className="w-full p-4 text-lg border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white text-slate-900" value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></div>
+                        <div><label className="block text-sm font-medium text-slate-700 mb-1">Meta Financeira (R$)</label><input type="number" placeholder="Ex: 10000" className="w-full p-4 text-lg border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white text-slate-900" value={goal} onChange={(e) => setGoal(e.target.value)} required /></div>
+                        <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-4 rounded-xl shadow-lg mt-4 transition-all active:scale-95 flex items-center justify-center gap-2">Criar Cofre <CheckCircle2 size={20} /></button>
                     </form>
                 </div>
             );
@@ -215,243 +150,2196 @@
             const [showConfetti, setShowConfetti] = useState(false);
             const [showSaveFeedback, setShowSaveFeedback] = useState(false);
             const [showResetModal, setShowResetModal] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
             
-            const percentage = useMemo(() => user.goal === 0 ? 0 : Math.min(100, Math.max(0, (user.currentAmount / user.goal) * 100)), [user.currentAmount, user.goal]);
-            const currentLevel = useMemo(() => [...EMPILHADOR_LEVELS].reverse().find(l => percentage >= l.threshold) || EMPILHADOR_LEVELS[0], [percentage]);
+            const percentage = useMemo(() => { if (user.goal === 0) return 0; return Math.min(100, Math.max(0, (user.currentAmount / user.goal) * 100)); }, [user.currentAmount, user.goal]);
+            const currentLevel = useMemo(() => { return [...EMPILHADOR_LEVELS].reverse().find(l => percentage >= l.threshold) || EMPILHADOR_LEVELS[0]; }, [percentage]);
+            const nextLevel = useMemo(() => { return EMPILHADOR_LEVELS.find(l => l.threshold > percentage); }, [percentage]);
             
+            useEffect(() => { if (toastMessage) { const timer = setTimeout(() => setToastMessage(null), 5000); return () => clearTimeout(timer); } }, [toastMessage]);
+
             const handleAddMoney = (e) => {
                 e.preventDefault();
                 const val = parseFloat(inputValue.replace(/\./g, '').replace(',', '.'));
                 if (!isNaN(val) && val > 0) {
                     const newAmount = user.currentAmount + val;
-                    const newHistory = [{ id: Date.now(), amount: val, date: new Date().toLocaleDateString('pt-BR') }, ...user.history];
+                    const prevThousands = Math.floor(user.currentAmount / 1000);
+                    const newThousands = Math.floor(newAmount / 1000);
+                    const unlockedThousand = newThousands > prevThousands;
+                    const newHistory = [{ id: Date.now(), amount: val, date: new Date().toLocaleDateString('pt-BR'), prevTotal: user.currentAmount, milestone: unlockedThousand }, ...user.history];
                     onUpdateData(newAmount, newHistory);
-                    setInputValue(''); setShowConfetti(true); setShowSaveFeedback(true); setTimeout(() => { setShowConfetti(false); setShowSaveFeedback(false); }, 2000);
+                    setInputValue(''); setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2000);
+                    const randomQuote = EMPILHADOR_QUOTES[Math.floor(Math.random() * EMPILHADOR_QUOTES.length)];
+                    setToastMessage(unlockedThousand ? { type: 'milestone', title: 'Marco de R$ 1.000 Desbloqueado!', message: randomQuote } : { type: 'motivation', title: 'Aporte Confirmado', message: randomQuote });
+                    handleManualSave(); 
                 }
             };
+            const handleManualSave = () => { setShowSaveFeedback(true); setTimeout(() => setShowSaveFeedback(false), 2000); };
+            const confirmReset = () => { onUpdateData(0, []); setShowResetModal(false); setToastMessage(null); setView('app-home'); };
 
             return (
-                <div className="w-full h-full bg-slate-50 flex flex-col overflow-hidden animate-fade-in">
-                    {showResetModal && <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4"><div className="bg-white p-6 rounded-2xl w-full max-w-sm"><h3 className="text-lg font-bold mb-2 text-slate-900">Zerar perfil?</h3><div className="flex gap-3"><button onClick={() => setShowResetModal(false)} className="flex-1 py-3 border rounded-xl text-slate-600">Cancelar</button><button onClick={() => { onUpdateData(0, []); setShowResetModal(false); setView('app-home'); }} className="flex-1 py-3 bg-red-500 text-white rounded-xl">Sim, zerar</button></div></div></div>}
-                    <div className="bg-white p-6 pb-8 rounded-b-3xl shadow-sm z-10 pt-10 shrink-0">
+                <div className="w-full h-screen sm:h-[700px] mx-auto bg-slate-50 sm:rounded-3xl overflow-hidden font-sans border border-slate-200 shadow-2xl relative flex flex-col animate-fade-in">
+                    {toastMessage && (
+                        <div className="absolute top-4 left-4 right-4 z-50 animate-in slide-in-from-top duration-300">
+                            <div className={cn("p-4 rounded-xl shadow-xl border flex gap-3", toastMessage.type === 'milestone' ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-slate-800 border-slate-700 text-white")}>
+                                <div className={cn("p-2 rounded-full shrink-0 h-fit", toastMessage.type === 'milestone' ? "bg-amber-200" : "bg-slate-700")}>{toastMessage.type === 'milestone' ? <Medal size={20} className="text-amber-700" /> : <Quote size={20} className="text-emerald-400" />}</div>
+                                <div><h4 className="font-bold text-sm mb-1">{toastMessage.title}</h4><p className="text-xs opacity-90 leading-relaxed">{toastMessage.message}</p></div>
+                                <button onClick={() => setToastMessage(null)} className="ml-auto shrink-0 self-start opacity-50 hover:opacity-100"><X size={16} /></button>
+                            </div>
+                        </div>
+                    )}
+                    {showResetModal && (
+                        <div className="absolute inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in duration-200">
+                                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto"><AlertTriangle className="text-red-500" size={24} /></div>
+                                <h3 className="text-lg font-bold text-slate-900 text-center mb-2">Zerar este perfil?</h3>
+                                <p className="text-slate-500 text-center text-sm mb-6">Isso removerá todo o histórico de {user.name}.</p>
+                                <div className="flex gap-3"><button onClick={() => setShowResetModal(false)} className="flex-1 py-3 px-4 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button><button onClick={confirmReset} className="flex-1 py-3 px-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 shadow-lg transition-colors">Sim, zerar</button></div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="bg-white p-6 pb-8 rounded-b-3xl shadow-sm z-10 relative pt-10 sm:pt-6">
                         <div className="flex justify-between items-start mb-6">
                             <div>
-                                <div className="flex items-center gap-2 mb-1"><button onClick={onLogout} className="flex items-center gap-1 text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full"><ArrowLeft size={12} /> Trocar</button><h2 className="text-sm font-bold text-slate-400 uppercase truncate max-w-[150px]">{user.name}</h2></div>
+                                <div className="flex items-center gap-2 mb-1"><button onClick={onLogout} className="flex items-center gap-1 text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full hover:bg-slate-200 transition-colors"><ArrowLeft size={12} /> Trocar</button><h2 className="text-sm font-bold text-slate-400 tracking-wider uppercase truncate max-w-[150px]">{user.name}</h2></div>
                                 <div className="flex items-baseline gap-1 mt-1"><span className="text-3xl font-extrabold text-slate-900">{formatCurrency(user.currentAmount)}</span><span className="text-sm text-slate-500"> / {formatCurrency(user.goal)}</span></div>
                             </div>
-                            <button onClick={() => setShowResetModal(true)} className="p-2 text-slate-300 hover:text-red-400"><Trash2 size={18} /></button>
+                            <button onClick={() => setShowResetModal(true)} className="p-2 text-slate-300 hover:text-red-400 transition-colors hover:bg-slate-50 rounded-lg"><Trash2 size={18} /></button>
                         </div>
-                        <div className="relative pt-2"><div className="h-4 bg-slate-100 rounded-full overflow-hidden"><div className={cn("h-full transition-all duration-1000 relative", percentage >= 100 ? "bg-amber-400" : "bg-emerald-500")} style={{ width: `${percentage}%` }}></div></div></div>
-                        <div className={cn("mt-6 p-4 rounded-xl border flex items-center gap-4 transition-all", currentLevel.bg, showConfetti ? "scale-105" : "")}><div className={cn("p-3 rounded-full bg-white", currentLevel.color)}><currentLevel.icon size={24} /></div><div><p className="text-xs font-bold uppercase opacity-70">Nível Atual</p><h3 className="font-bold text-slate-900 text-lg">{currentLevel.title}</h3></div></div>
+                        <div className="relative pt-2"><div className="flex justify-between text-xs font-semibold text-slate-500 mb-2"><span>Progresso</span><span>{percentage.toFixed(1)}%</span></div><div className="h-4 bg-slate-100 rounded-full overflow-hidden border border-slate-100"><div className={cn("h-full rounded-full transition-all duration-1000 ease-out relative", percentage >= 100 ? "bg-amber-400" : "bg-emerald-500")} style={{ width: `${percentage}%` }}><div className="absolute top-0 right-0 bottom-0 w-full bg-gradient-to-l from-white/20 to-transparent"></div></div></div></div>
+                        <div className={cn("mt-6 p-4 rounded-xl border flex items-center gap-4 transition-all duration-500", currentLevel.bg, showConfetti ? "scale-105 ring-2 ring-emerald-400 ring-offset-2" : "")}><div className={cn("p-3 rounded-full bg-white shadow-sm", currentLevel.color)}><currentLevel.icon size={24} /></div><div><p className="text-xs font-bold uppercase tracking-wide opacity-70 mb-0.5">Nível Atual</p><h3 className="font-bold text-slate-900 text-lg leading-tight">{currentLevel.title}</h3></div></div>
                     </div>
-                    <div className="p-6 space-y-6 flex-1 overflow-y-auto pb-24">
+                    <div className="p-6 space-y-6 flex-1 overflow-y-auto pb-24 sm:pb-6">
                         {view === 'app-home' ? (
                             <>
-                                <button onClick={() => setView('app-add')} className="w-full bg-slate-900 text-white py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 font-bold text-lg"><Plus size={24} className="text-emerald-400" /> Novo Aporte</button>
-                                <div><h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2"><History size={16} /> Histórico</h3><div className="space-y-3">{user.history.slice(0, 5).map(item => (<div key={item.id} className="bg-white p-3 rounded-xl border flex justify-between items-center"><span className="text-slate-500 text-xs">{item.date}</span><span className="font-bold text-emerald-600">+{formatCurrency(item.amount)}</span></div>))}</div></div>
+                                {nextLevel && (<div className="relative mb-2"><div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-200"></div><div className="relative pl-12 py-2"><div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-slate-100 border-2 border-slate-300 rounded-full flex items-center justify-center text-slate-400 z-10"><Lock size={12} /></div><h4 className="text-sm font-semibold text-slate-600">Próxima Conquista: <span className="text-slate-900">{nextLevel.title}</span></h4><p className="text-xs text-slate-400 mt-1">Faltam {formatCurrency(user.goal * (nextLevel.threshold/100) - user.currentAmount)} para desbloquear.</p></div></div>)}
+                                <button onClick={() => setView('app-add')} className="w-full bg-slate-900 text-white py-4 rounded-xl shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2 font-bold text-lg"><Plus size={24} className="text-emerald-400" /> Novo Aporte</button>
+                                <div className="bg-indigo-900 p-5 rounded-2xl shadow-lg relative overflow-hidden group"><div className="absolute top-0 right-0 opacity-10 transform translate-x-1/4 -translate-y-1/4"><Shield size={120} /></div><div className="relative z-10"><div className="flex items-center gap-2 mb-3 text-indigo-200"><Lightbulb size={16} className="text-yellow-400" /><span className="text-xs font-bold uppercase tracking-wider">A Cura para o "Trabalho Muito"</span></div><p className="text-sm text-indigo-50 leading-relaxed">O Empilhador hackeia seu cérebro para tornar o ato de <span className="text-white font-bold">guardar</span> mais viciante que o de <span className="text-white font-bold">gastar</span>.</p></div></div>
+                                <div><h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2"><History size={16} className="text-slate-400" /> Últimos Tijolos</h3><div className="space-y-3">{user.history.length === 0 ? (<div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-200"><p className="text-sm">Nenhum aporte ainda.</p></div>) : (user.history.slice(0, 5).map((item) => (<div key={item.id} className={cn("bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm transition-all", item.milestone ? "border-amber-200 bg-amber-50/50" : "border-slate-100")}><div className="flex items-center gap-3"><div className={cn("w-8 h-8 rounded-full flex items-center justify-center", item.milestone ? "bg-amber-100 text-amber-600" : "bg-emerald-50 text-emerald-600")}>{item.milestone ? <Medal size={16} /> : <TrendingUp size={14} />}</div><div><p className="text-sm font-bold text-slate-900 flex items-center gap-1">Aporte {item.milestone && <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full font-extrabold uppercase tracking-wide">Marco!</span>}</p><p className="text-xs text-slate-500">{item.date}</p></div></div><span className={cn("font-bold text-sm", item.milestone ? "text-amber-600" : "text-emerald-600")}>+{formatCurrency(item.amount)}</span></div>)))}</div></div>
                             </>
                         ) : (
-                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100"><label className="block text-sm font-semibold text-slate-700 mb-3">Valor do Aporte</label><form onSubmit={handleAddMoney} className="flex flex-col gap-3"><input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full px-4 py-4 text-xl bg-slate-50 border rounded-xl text-slate-900" autoFocus /><button type="submit" disabled={!inputValue} className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold">Confirmar</button></form><button onClick={() => setView('app-home')} className="w-full text-slate-400 text-sm mt-4">Cancelar</button></div>
+                            <>
+                                <div className="flex items-center gap-2 mb-2"><button onClick={() => setView('app-home')} className="p-2 -ml-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 text-sm font-semibold"><ArrowLeft size={18} /> Voltar</button></div>
+                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden animate-fade-in"><label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2"><Plus size={16} className="text-emerald-500" /> Registrar Novo Aporte</label><form onSubmit={handleAddMoney} className="flex flex-col gap-3 mb-4"><input type="number" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Valor (ex: 150)" className="w-full px-4 py-4 text-xl bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all font-medium text-slate-900" step="0.01" autoFocus /><button type="submit" disabled={!inputValue} className="w-full bg-emerald-500 text-white py-4 rounded-xl hover:bg-emerald-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-200 font-bold flex items-center justify-center gap-2">Confirmar Aporte <CheckCircle2 size={20} /></button></form><div className="pt-3 border-t border-slate-50 flex items-center justify-between"><span className="text-xs text-slate-400">Progresso salvo automaticamente</span><button onClick={handleManualSave} className={cn("flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all", showSaveFeedback ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}>{showSaveFeedback ? <><CheckCircle2 size={14} /> Salvo!</> : <><Save size={14} /> Salvar</>}</button></div></div>
+                                <div className="bg-slate-100/50 p-4 rounded-xl border border-dashed border-slate-200 text-center"><p className="text-xs text-slate-500 italic">"{EMPILHADOR_QUOTES[Math.floor(Math.random() * EMPILHADOR_QUOTES.length)]}"</p></div>
+                            </>
                         )}
                     </div>
                 </div>
             );
         }
 
+        // --- Container Principal do Empilhador ---
         function Empilhador_Tool({ onExit }) {
-            const [currentView, setCurrentView] = useState('welcome');
-            const [users, setUsers] = useState([]);
-            const [activeUser, setActiveUser] = useState(null);
+          const [currentView, setCurrentView] = useState('welcome');
+          const [users, setUsers] = useState([]);
+          const [activeUser, setActiveUser] = useState(null);
 
-            useEffect(() => { const s = localStorage.getItem('miniApp_treasureMap_users_v2'); if (s) setUsers(JSON.parse(s)); }, []);
-            const save = (u) => { setUsers(u); localStorage.setItem('miniApp_treasureMap_users_v2', JSON.stringify(u)); };
-            const createUser = (n, g) => { const u = { id: Date.now().toString(), name: n, goal: g, currentAmount: 0, history: [] }; const list = [...users, u]; save(list); setActiveUser(u); setCurrentView('app-home'); };
-            const updateUser = (amt, hist) => { if(!activeUser) return; const u = { ...activeUser, currentAmount: amt, history: hist }; setActiveUser(u); save(users.map(us => us.id === u.id ? u : us)); };
+          useEffect(() => {
+            const savedUsers = localStorage.getItem('miniApp_treasureMap_users_v2');
+            if (savedUsers) {
+              setUsers(JSON.parse(savedUsers));
+            }
+          }, []);
 
-            return (
-                <div className="relative w-full h-full">
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs flex justify-center pointer-events-none"><button onClick={onExit} className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all"><LayoutGrid size={16} className="text-emerald-400" /> Menu Principal</button></div>
-                    {currentView === 'welcome' && <div className="w-full h-full bg-slate-900 text-white p-8 flex flex-col justify-between items-center text-center pb-24 overflow-y-auto"><div className="mt-12"><Mountain size={48} className="text-emerald-400 mb-6 mx-auto" /><h1 className="text-3xl font-bold mb-3">Empilhador</h1><p className="text-slate-400 text-sm">A jornada começa com o primeiro tijolo.</p></div><button onClick={() => setCurrentView('user-select')} className="w-full bg-emerald-500 text-slate-900 font-bold py-4 rounded-xl">Iniciar Jornada</button></div>}
-                    {currentView === 'user-select' && <div className="w-full h-full bg-white p-6 flex flex-col pb-24 overflow-y-auto"><h2 className="text-xl font-bold text-slate-800 mb-6">Quem vai empilhar?</h2><div className="space-y-3 flex-1">{users.map(u => <button key={u.id} onClick={() => { setActiveUser(u); setCurrentView('app-home'); }} className="w-full p-4 border rounded-xl flex justify-between items-center"><span className="font-bold text-slate-800">{u.name}</span><span className="text-xs text-slate-500">{formatCurrency(u.currentAmount)}</span></button>)}</div><button onClick={() => setCurrentView('create-user')} className="w-full bg-slate-900 text-white py-3 rounded-xl mt-4">Criar Novo Perfil</button></div>}
-                    {currentView === 'create-user' && <Empilhador_CreateUser onBack={() => setCurrentView('user-select')} onCreate={createUser} />}
-                    {activeUser && <Empilhador_InternalDashboard user={activeUser} onUpdateData={updateUser} onLogout={() => { setActiveUser(null); setCurrentView('user-select'); }} view={currentView} setView={setCurrentView} />}
+          const saveUsersToStorage = (updatedUsers) => {
+            setUsers(updatedUsers);
+            localStorage.setItem('miniApp_treasureMap_users_v2', JSON.stringify(updatedUsers));
+          };
+
+          const handleCreateUser = (name, goal) => {
+            const newUser = { id: Date.now().toString(), name, goal: parseFloat(goal), currentAmount: 0, history: [], createdAt: Date.now() };
+            const updatedList = [...users, newUser];
+            saveUsersToStorage(updatedList);
+            setActiveUser(newUser);
+            setCurrentView('app-home');
+          };
+
+          const handleSelectUser = (user) => { setActiveUser(user); setCurrentView('app-home'); };
+          const handleDeleteUser = (userId) => {
+             if (window.confirm("Tem certeza? Isso apagará este perfil permanentemente.")) {
+                const updatedList = users.filter(u => u.id !== userId);
+                saveUsersToStorage(updatedList);
+                if (activeUser && activeUser.id === userId) { setActiveUser(null); setCurrentView('user-select'); }
+             }
+          };
+
+          const handleUpdateActiveUserData = (newAmount, newHistory) => {
+            if (!activeUser) return;
+            const updatedUser = { ...activeUser, currentAmount: newAmount, history: newHistory };
+            setActiveUser(updatedUser);
+            const updatedList = users.map(u => u.id === activeUser.id ? updatedUser : u);
+            saveUsersToStorage(updatedList);
+          };
+
+          const handleLogout = () => { setActiveUser(null); setCurrentView('user-select'); };
+
+          return (
+            <div className="relative">
+                {/* Botão Global de Voltar ao Menu - ESTILO PÍLULA CENTRALIZADA */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-full max-w-xs flex justify-center pointer-events-none">
+                    <button 
+                        onClick={onExit}
+                        className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                    >
+                        <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                        Menu Principal
+                    </button>
                 </div>
-            );
+
+                {currentView === 'welcome' && (
+                  <div className="w-full h-screen sm:h-[700px] bg-slate-900 text-white sm:rounded-3xl p-8 flex flex-col justify-between items-center text-center shadow-2xl relative overflow-hidden pb-24">
+                      <div className="absolute top-0 left-0 w-64 h-64 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                      <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+                      <div className="relative z-10 flex flex-col items-center mt-12 animate-slide-up">
+                          <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-6 backdrop-blur-sm border border-white/20">
+                              <Mountain size={48} className="text-emerald-400" />
+                          </div>
+                          <h1 className="text-3xl font-bold mb-3 tracking-tight">Empilhador de<br/>Dinheiro Secreto</h1>
+                          <p className="text-slate-400 text-sm max-w-xs leading-relaxed">A jornada para a sua liberdade financeira começa com o primeiro tijolo.</p>
+                      </div>
+                      <div className="relative z-10 w-full animate-fade-in" style={{animationDelay: '0.3s'}}>
+                          <div className="bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-md mb-8">
+                              <Quote size={20} className="text-emerald-400 mb-2 opacity-80" />
+                              <p className="text-lg font-medium italic text-slate-200">"A disciplina é a ponte entre metas e realizações."</p>
+                              <p className="text-xs text-slate-500 mt-2 uppercase tracking-widest font-bold">Jim Rohn</p>
+                          </div>
+                          <button onClick={() => setCurrentView('user-select')} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-4 rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2">Iniciar Jornada <ArrowRight size={20} /></button>
+                      </div>
+                  </div>
+                )}
+
+                {currentView === 'user-select' && (
+                  <div className="w-full h-screen sm:h-[700px] bg-white sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col pb-24">
+                      <div className="bg-slate-50 p-6 border-b border-slate-100 pt-10 sm:pt-6">
+                          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Users className="text-emerald-600" size={24} /> Quem vai empilhar?</h2>
+                          <p className="text-sm text-slate-500 mt-1">Selecione um perfil ou crie um novo.</p>
+                      </div>
+                      <div className="p-6 flex-1 overflow-y-auto">
+                          {users.length === 0 ? (
+                              <div className="text-center py-10 opacity-50"><Ghost size={48} className="mx-auto mb-3 text-slate-300" /><p className="text-sm">Nenhum perfil encontrado.</p></div>
+                          ) : (
+                              <div className="space-y-3">
+                                  {users.map(user => (
+                                      <div key={user.id} className="group relative">
+                                        <button onClick={() => handleSelectUser(user)} className="w-full bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between hover:border-emerald-500 hover:shadow-md transition-all group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors"><User size={20} /></div>
+                                                <div className="text-left"><h3 className="font-bold text-slate-800">{user.name}</h3><p className="text-xs text-slate-500">{formatCurrency(user.currentAmount)} acumulados</p></div>
+                                            </div>
+                                            <ArrowRight size={18} className="text-slate-300 group-hover:text-emerald-500" />
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteUser(user.id); }} className="absolute right-[-10px] top-[-10px] bg-red-100 text-red-500 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Excluir perfil"><X size={12} /></button>
+                                      </div>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+                      <div className="p-6 border-t border-slate-100 bg-slate-50">
+                          <button onClick={() => setCurrentView('create-user')} className="w-full bg-slate-900 text-white py-3 rounded-xl font-semibold shadow-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2"><Plus size={20} className="text-emerald-400" /> Criar Novo Perfil</button>
+                      </div>
+                  </div>
+                )}
+
+                {currentView === 'create-user' && <Empilhador_CreateUser onBack={() => setCurrentView('user-select')} onCreate={handleCreateUser} />}
+                {activeUser && <Empilhador_InternalDashboard user={activeUser} onUpdateData={handleUpdateActiveUserData} onLogout={handleLogout} view={currentView} setView={setCurrentView} />}
+            </div>
+          );
         }
 
         // ==========================================
-        // 2. DETECTOR
+        // MÓDULO 2: DETECTOR DE RALO FINANCEIRO (Código Fiel)
         // ==========================================
+        
         const DETECTOR_CATEGORIES = [
-            { id: 'delivery', name: 'Delivery', icon: <ShoppingBag />, color: '#F43F5E', question: 'Média mensal com iFood?' },
-            { id: 'vices', name: 'Vícios', icon: <Coffee />, color: '#F59E0B', question: 'Café, doces, lanches na rua?' },
-            { id: 'subs', name: 'Assinaturas', icon: <Smartphone />, color: '#8B5CF6', question: 'Apps que você mal usa?' },
-            { id: 'transport', name: 'Transporte', icon: <Car />, color: '#3B82F6', question: 'Uber não planejado?' },
-            { id: 'fees', name: 'Taxas', icon: <CreditCard />, color: '#64748B', question: 'Tarifas bancárias?' }
+          { 
+            id: 'delivery', 
+            name: 'Delivery & Apps', 
+            icon: <ShoppingBag className="w-5 h-5" />, 
+            color: '#F43F5E', 
+            question: 'Média mensal com iFood, Uber Eats ou Rappi?',
+            tipTitle: 'Regra do "Aplicativo Fantasma"',
+            tipContent: 'Desinstale os apps de comida de segunda a quinta. A fricção de ter que instalar de novo vai salvar seu dinheiro.'
+          },
+          { 
+            id: 'vices', 
+            name: 'Pequenos Vícios', 
+            icon: <Coffee className="w-5 h-5" />, 
+            color: '#F59E0B', 
+            question: 'Cafézinho, doces, cigarro, lanches na rua?',
+            tipTitle: 'O Efeito Latte Reverso',
+            tipContent: 'Substitua o hábito, não elimine. Leve de casa. O custo cai 80% e a satisfação se mantém.'
+          },
+          { 
+            id: 'subs', 
+            name: 'Assinaturas', 
+            icon: <Smartphone className="w-5 h-5" />, 
+            color: '#8B5CF6', 
+            question: 'Streamings, clubes e apps que você mal abre?',
+            tipTitle: 'Auditoria do Esquecimento',
+            tipContent: 'Cancele tudo hoje. Só reative o que você sentir falta real em 7 dias. Você vai se surpreender.'
+          },
+          { 
+            id: 'transport', 
+            name: 'Transporte Extra', 
+            icon: <Car className="w-5 h-5" />, 
+            color: '#3B82F6', 
+            question: 'Uber/Táxi por preguiça, chuva ou atraso?',
+            tipTitle: 'A Multa do Atraso',
+            tipContent: 'Trate o Uber não planejado como uma multa. Acorde 15 min mais cedo e você "ganha" R$ 20,00 por dia.'
+          },
+          { 
+            id: 'fees', 
+            name: 'Taxas Invisíveis', 
+            icon: <CreditCard className="w-5 h-5" />, 
+            color: '#64748B', 
+            question: 'Anuidade de cartão, tarifas bancárias, juros?',
+            tipTitle: 'O Ultimato Bancário',
+            tipContent: 'Ligue no banco hoje. Diga: "Recebi oferta de isenção no concorrente". Eles isentam na hora.'
+          },
         ];
 
+        const DETECTOR_STORAGE_KEY = 'ralo_invisivel_student_final';
+
+        function FeatureRow({ icon, text }) {
+          return (
+            <div className="flex items-center gap-3">
+              <div className="bg-white p-1 rounded-full shadow-sm">{icon}</div>
+              <span className="text-slate-600 text-sm font-medium">{text}</span>
+            </div>
+          );
+        }
+
         function Detector_Tool({ onExit }) {
-            const [step, setStep] = useState('intro');
-            const [idx, setIdx] = useState(0);
-            const [expenses, setExpenses] = useState({});
-            const [income, setIncome] = useState({ salary: '', hours: 8 });
+          const [step, setStep] = useState('intro');
+          const [viewPeriod, setViewPeriod] = useState(1);
+          const [incomeData, setIncomeData] = useState(() => {
+            const saved = localStorage.getItem(DETECTOR_STORAGE_KEY);
+            return saved ? JSON.parse(saved).incomeData || { salary: '', hours: 8 } : { salary: '', hours: 8 };
+          });
+          
+          const [expenses, setExpenses] = useState(() => {
+            const saved = localStorage.getItem(DETECTOR_STORAGE_KEY);
+            return saved ? JSON.parse(saved).expenses || DETECTOR_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat.id]: 0 }), {}) : DETECTOR_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat.id]: 0 }), {});
+          });
+          
+          const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
+          const [committed, setCommitted] = useState(false);
 
-            const handleVal = (v) => setExpenses({ ...expenses, [DETECTOR_CATEGORIES[idx].id]: parseFloat(v) || 0 });
-            const next = () => { if (idx < DETECTOR_CATEGORIES.length - 1) setIdx(idx + 1); else setStep('result'); };
-            const total = Object.values(expenses).reduce((a, b) => a + b, 0) * 12;
-            const chartData = DETECTOR_CATEGORIES.map(c => ({ name: c.name, value: (expenses[c.id] || 0) * 12, fill: c.color })).filter(d => d.value > 0);
+          useEffect(() => {
+            localStorage.setItem(DETECTOR_STORAGE_KEY, JSON.stringify({ expenses, incomeData }));
+          }, [expenses, incomeData]);
 
-            return (
-                <div className="relative w-full h-full bg-white font-sans overflow-y-auto pb-24">
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs flex justify-center pointer-events-none"><button onClick={onExit} className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all"><LayoutGrid size={16} className="text-emerald-400" /> Menu Principal</button></div>
-                    {step === 'intro' && <div className="p-8 text-center flex flex-col h-full justify-center"><div className="mb-6 mx-auto bg-slate-900 p-4 rounded-full text-emerald-400"><Search size={32} /></div><h1 className="text-2xl font-bold text-slate-800 mb-2">Detector de Ralo</h1><p className="text-slate-500 mb-8">Onde seu dinheiro está vazando?</p><button onClick={() => setStep('config')} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold">Começar</button></div>}
-                    {step === 'config' && <div className="p-8 flex flex-col h-full justify-center"><h2 className="text-xl font-bold text-slate-800 mb-4">Sua Renda</h2><input type="number" placeholder="Salário Líquido" className="w-full p-4 border rounded-xl mb-4 text-slate-900" value={income.salary} onChange={e => setIncome({ ...income, salary: e.target.value })} /><button onClick={() => setStep('audit')} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold">Continuar</button></div>}
-                    {step === 'audit' && <div className="p-8 flex flex-col h-full pt-12"><div className="h-1 bg-slate-100 w-full mb-8"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${((idx + 1) / DETECTOR_CATEGORIES.length) * 100}%` }}></div></div><div className="text-center mb-8"><div className="mx-auto mb-4 w-12 h-12 flex items-center justify-center rounded-xl" style={{ backgroundColor: DETECTOR_CATEGORIES[idx].color + '20', color: DETECTOR_CATEGORIES[idx].color }}>{DETECTOR_CATEGORIES[idx].icon}</div><h2 className="text-xl font-bold text-slate-800">{DETECTOR_CATEGORIES[idx].name}</h2><p className="text-slate-500 text-sm mt-2">{DETECTOR_CATEGORIES[idx].question}</p></div><input type="number" autoFocus placeholder="R$ 0" className="w-full text-center text-4xl font-bold border-b-2 border-slate-200 py-4 outline-none text-slate-900" value={expenses[DETECTOR_CATEGORIES[idx].id] || ''} onChange={e => handleVal(e.target.value)} /><button onClick={next} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold mt-auto">Próximo</button></div>}
-                    {step === 'result' && <div className="p-8 h-full bg-slate-900 text-white flex flex-col"><h2 className="text-center text-slate-400 text-xs uppercase font-bold tracking-widest mb-2">Desperdício Anual</h2><div className="text-center text-5xl font-black mb-8">R$ {total.toLocaleString('pt-BR')}</div><div className="bg-white rounded-xl p-4 flex-1 text-slate-900"><h3 className="font-bold mb-4">Raio-X</h3><div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} layout="vertical"><XAxis type="number" hide /><YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} /><Bar dataKey="value" radius={[0, 4, 4, 0]}><LabelList dataKey="value" position="right" /><Cell fill="#8884d8" /></Bar></BarChart></ResponsiveContainer></div><button onClick={() => { setExpenses({}); setStep('intro'); setIdx(0); }} className="w-full mt-4 py-3 border rounded-xl text-slate-500">Refazer</button></div></div>}
+          const totalMonthly = useMemo(() => {
+            return Object.values(expenses).reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+          }, [expenses]);
+
+          const totalYearly = totalMonthly * 12;
+          const displayedTotal = totalYearly * viewPeriod;
+
+          const workStats = useMemo(() => {
+            const salary = parseFloat(incomeData.salary) || 0;
+            const hours = parseFloat(incomeData.hours) || 8;
+            const hourlyRate = salary > 0 ? salary / (22 * hours) : 0;
+            const hoursLostTotal = hourlyRate > 0 ? displayedTotal / hourlyRate : 0;
+            const daysLostTotal = hours > 0 ? hoursLostTotal / hours : 0;
+            return { hourlyRate, daysLostTotal };
+          }, [displayedTotal, incomeData]);
+
+          const biggestLeak = useMemo(() => {
+            const sorted = [...DETECTOR_CATEGORIES].sort((a, b) => (expenses[b.id] || 0) - (expenses[a.id] || 0));
+            return sorted[0];
+          }, [expenses]);
+
+          const chartData = useMemo(() => {
+            return DETECTOR_CATEGORIES.map(cat => ({
+              name: cat.name,
+              value: expenses[cat.id] * 12 * viewPeriod,
+              color: cat.color
+            })).filter(item => item.value > 0);
+          }, [expenses, viewPeriod]);
+
+          const handleStart = () => setStep('config');
+
+          const handleConfigSubmit = (e) => {
+            e.preventDefault();
+            if (!incomeData.salary || incomeData.salary <= 0) {
+              alert("Por favor, informe uma renda aproximada para calcularmos seu tempo de vida.");
+              return;
+            }
+            setStep('audit');
+          };
+
+          const handleExpenseChange = (amount) => {
+            const currentCat = DETECTOR_CATEGORIES[activeCategoryIndex];
+            setExpenses(prev => ({ ...prev, [currentCat.id]: amount }));
+          };
+
+          const nextCategory = () => {
+            if (activeCategoryIndex < DETECTOR_CATEGORIES.length - 1) {
+              setActiveCategoryIndex(prev => prev + 1);
+            } else {
+              setStep('analyzing');
+              setTimeout(() => setStep('result'), 2000);
+            }
+          };
+
+          const prevCategory = () => {
+            if (activeCategoryIndex > 0) {
+              setActiveCategoryIndex(prev => prev - 1);
+            } else {
+              setStep('config');
+            }
+          };
+
+          const goToPlan = () => setStep('action_plan');
+
+          const resetAudit = () => {
+            if(window.confirm("Refazer o diagnóstico apagará seus dados atuais. Continuar?")) {
+              setExpenses(DETECTOR_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat.id]: 0 }), {}));
+              setActiveCategoryIndex(0);
+              setCommitted(false);
+              setViewPeriod(1);
+              setStep('intro');
+            }
+          };
+
+          return (
+            <div className="relative">
+                {/* Botão Global de Voltar ao Menu - ESTILO PÍLULA CENTRALIZADA */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-full max-w-xs flex justify-center pointer-events-none">
+                    <button 
+                        onClick={onExit}
+                        className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                    >
+                        <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                        Menu Principal
+                    </button>
                 </div>
-            );
+
+                {step === 'intro' && (
+                  <div className="min-h-auto w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 font-sans pb-24">
+                    <div className="bg-slate-900 p-8 text-center relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+                      <div className="bg-slate-800/80 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700 backdrop-blur-sm">
+                        <Target className="text-emerald-400 w-8 h-8" />
+                      </div>
+                      <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3">
+                        Módulo 1: Diagnóstico
+                      </span>
+                      <h1 className="text-xl font-bold text-white mb-2 leading-tight">Detector de Ralo Financeiro</h1>
+                      <p className="text-slate-400 text-sm leading-relaxed max-w-[280px] mx-auto">
+                        Vamos descobrir onde seu dinheiro está escondido e quanto tempo de vida você está perdendo.
+                      </p>
+                    </div>
+                    
+                    <div className="p-8 space-y-6">
+                      <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <FeatureRow icon={<Clock className="w-5 h-5 text-emerald-600"/>} text="Cálculo de tempo de vida perdido" />
+                        <FeatureRow icon={<Zap className="w-5 h-5 text-emerald-600"/>} text="Mapeamento de despesas ocultas" />
+                        <FeatureRow icon={<ShieldCheck className="w-5 h-5 text-emerald-600"/>} text="Plano de Bloqueio Imediato" />
+                      </div>
+
+                      <button 
+                        onClick={handleStart}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 group"
+                      >
+                        Começar Diagnóstico
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {step === 'config' && (
+                  <div className="min-h-auto w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 font-sans pb-24">
+                    <div className="bg-slate-900 p-6 relative">
+                      <button onClick={() => setStep('intro')} className="absolute top-6 left-6 text-slate-400 hover:text-white">
+                        Voltar
+                      </button>
+                      <div className="flex justify-center mb-4">
+                         <div className="bg-slate-800 p-3 rounded-full border border-slate-700">
+                            <Briefcase className="text-emerald-400 w-6 h-6" />
+                         </div>
+                      </div>
+                      <h2 className="text-white text-center font-bold text-lg">Dados de Trabalho</h2>
+                      <p className="text-slate-400 text-center text-xs px-8 mt-2">
+                        Não se preocupe, esses dados ficam salvos apenas no seu celular. Usaremos para converter dinheiro em tempo de vida.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleConfigSubmit} className="p-8 space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-emerald-500" />
+                          Renda Mensal (Líquida)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">R$</span>
+                          <input 
+                            type="number"
+                            required
+                            placeholder="Ex: 3000"
+                            value={incomeData.salary}
+                            onChange={(e) => setIncomeData({...incomeData, salary: e.target.value})}
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-emerald-500" />
+                          Horas trabalhadas por dia
+                        </label>
+                        <input 
+                          type="number"
+                          required
+                          min="1"
+                          max="24"
+                          value={incomeData.hours}
+                          onChange={(e) => setIncomeData({...incomeData, hours: e.target.value})}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
+                        />
+                        <p className="text-xs text-slate-400 pl-1">Geralmente 8 horas (CLT) ou sua média.</p>
+                      </div>
+
+                      <button 
+                        type="submit"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 mt-4"
+                      >
+                        Continuar para Auditoria
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {step === 'audit' && (
+                  <div className="min-h-auto w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 font-sans pb-24">
+                    <div className="h-1.5 w-full bg-slate-100">
+                      <div 
+                        className="h-full bg-emerald-500 transition-all duration-500 ease-out" 
+                        style={{ width: `${((activeCategoryIndex + 1) / DETECTOR_CATEGORIES.length) * 100}%` }}
+                      />
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-6">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          Item {activeCategoryIndex + 1} de {DETECTOR_CATEGORIES.length}
+                        </span>
+                        <button onClick={prevCategory} className="text-slate-400 hover:text-slate-600 text-sm font-medium">
+                          Voltar
+                        </button>
+                      </div>
+
+                      <div className="text-center mb-8 animate-fade-in">
+                        <div 
+                          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm transition-colors duration-300"
+                          style={{ backgroundColor: `${DETECTOR_CATEGORIES[activeCategoryIndex].color}15` }}
+                        >
+                          <div style={{ color: DETECTOR_CATEGORIES[activeCategoryIndex].color }}>{DETECTOR_CATEGORIES[activeCategoryIndex].icon}</div>
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-800 mb-2">{DETECTOR_CATEGORIES[activeCategoryIndex].name}</h2>
+                        <p className="text-slate-500 text-sm px-2 leading-relaxed">{DETECTOR_CATEGORIES[activeCategoryIndex].question}</p>
+                      </div>
+
+                      <div className="mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <div className="flex flex-col items-center mb-6">
+                          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Gasto Mensal</label>
+                          <div className="relative w-full max-w-[200px]">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">R$</span>
+                            <input 
+                              type="number"
+                              value={expenses[DETECTOR_CATEGORIES[activeCategoryIndex].id] === 0 ? '' : expenses[DETECTOR_CATEGORIES[activeCategoryIndex].id]}
+                              onChange={(e) => handleExpenseChange(Math.max(0, parseInt(e.target.value) || 0))}
+                              placeholder="0"
+                              className="w-full pl-8 pr-4 py-2 text-3xl font-bold text-slate-900 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-center shadow-sm"
+                            />
+                          </div>
+                        </div>
+                        
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="1000" 
+                          step="10"
+                          value={expenses[DETECTOR_CATEGORIES[activeCategoryIndex].id] > 1000 ? 1000 : expenses[DETECTOR_CATEGORIES[activeCategoryIndex].id]}
+                          onChange={(e) => handleExpenseChange(parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                        />
+                        <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 mt-3">
+                          <span>Zero</span>
+                          <span>R$ 500</span>
+                          <span>R$ 1.000+</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={nextCategory}
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        {activeCategoryIndex === DETECTOR_CATEGORIES.length - 1 ? 'Analisar Resultados' : 'Próximo Item'}
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {step === 'analyzing' && (
+                  <div className="min-h-auto w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 font-sans p-8 flex flex-col items-center justify-center py-24">
+                    <div className="relative w-24 h-24 mb-8">
+                      <div className="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+                      <div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
+                      <Target className="absolute inset-0 m-auto text-emerald-500 w-10 h-10 animate-pulse" />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">Calculando Futuro...</h2>
+                    <p className="text-slate-500 text-center text-sm max-w-[200px]">Projetando o impacto composto das suas decisões financeiras.</p>
+                  </div>
+                )}
+
+                {step === 'result' && (
+                  <div className="min-h-auto w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 font-sans animate-fade-in pb-24">
+                    <div className="bg-slate-900 p-6 text-center relative transition-all duration-500">
+                       
+                       {/* Toggle de Período */}
+                       <div className="flex justify-center mb-6">
+                          <div className="bg-slate-800 p-1 rounded-lg inline-flex items-center gap-1 border border-slate-700">
+                              <button 
+                                onClick={() => setViewPeriod(1)}
+                                className={cn(
+                                    "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                                    viewPeriod === 1 ? "bg-slate-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-300"
+                                )}
+                              >
+                                  1 Ano (Visão Curta)
+                              </button>
+                              <button 
+                                onClick={() => setViewPeriod(5)}
+                                className={cn(
+                                    "px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1",
+                                    viewPeriod === 5 ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-300"
+                                )}
+                              >
+                                  5 Anos (A Realidade)
+                                  {viewPeriod !== 5 && <TrendingUp className="w-3 h-3" />}
+                              </button>
+                          </div>
+                       </div>
+
+                       <div className="absolute top-0 right-0 p-4 opacity-20">
+                         <AlertTriangle className={cn("w-16 h-16 transition-colors", viewPeriod === 5 ? "text-rose-500" : "text-slate-500")} />
+                       </div>
+
+                      <h2 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 animate-fade-in">
+                        {viewPeriod === 1 ? 'Desperdício Anual' : 'Fortuna Jogada Fora em 5 Anos'}
+                      </h2>
+                      
+                      <div className="text-4xl font-black text-white tracking-tight mb-4 animate-fade-in">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayedTotal)}
+                      </div>
+                      
+                      {/* Card de Impacto em Dias/Meses */}
+                      <div className={cn(
+                          "rounded-xl p-3 border flex items-center gap-3 text-left transition-colors duration-500",
+                          viewPeriod === 5 ? "bg-rose-900/40 border-rose-500/30" : "bg-rose-500/20 border-rose-500/30"
+                      )}>
+                        <div className={cn("p-2 rounded-lg shrink-0", viewPeriod === 5 ? "bg-rose-600" : "bg-rose-500")}>
+                            <Clock className="text-white w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-rose-200 text-[10px] uppercase font-bold tracking-wider">Tempo de Vida Perdido</p>
+                            <p className="text-white text-sm leading-tight">
+                                {viewPeriod === 1 
+                                    ? <span>Em um ano, você trabalharia <strong className="text-rose-300">{workStats.daysLostTotal.toFixed(1)} dias</strong> de graça só para pagar estes custos.</span>
+                                    : <span>Em 5 anos, você trabalharia <strong className="text-rose-300">{(workStats.daysLostTotal / 22).toFixed(1)} meses</strong> inteiros apenas para pagar esses desperdícios.</span>
+                                }
+                            </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                      
+                      {/* Comparação Contextual (Carro/Viagem) */}
+                      {viewPeriod === 5 && displayedTotal > 15000 && (
+                          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-start gap-3 animate-fade-in">
+                              <div className="bg-indigo-100 p-2 rounded-full text-indigo-600 mt-1">
+                                  {displayedTotal > 40000 ? <Car className="w-5 h-5" /> : <PiggyBank className="w-5 h-5" />}
+                              </div>
+                              <div>
+                                  <h4 className="font-bold text-indigo-900 text-sm">Custo de Oportunidade</h4>
+                                  <p className="text-indigo-700 text-xs leading-relaxed mt-1">
+                                      Com esse dinheiro, você poderia comprar <strong>{displayedTotal > 50000 ? 'um Carro Popular à vista' : displayedTotal > 20000 ? 'uma Viagem Internacional' : 'uma Moto 0km'}</strong>. Em vez disso, esse valor virou iFood e taxas.
+                                  </p>
+                              </div>
+                          </div>
+                      )}
+
+                      {/* Gráfico */}
+                      {displayedTotal > 0 && (
+                        <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase">Raio-X {viewPeriod === 1 ? 'Anual' : 'de 5 Anos'}</h3>
+                                {viewPeriod === 5 && <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">Valores Projetados</span>}
+                            </div>
+                            <div className="h-48 w-full relative -ml-2">
+                                <ResponsiveContainer width="100%" height="100%">
+                                <BarChart 
+                                    data={chartData} 
+                                    layout="vertical" 
+                                    margin={{ top: 5, right: 90, left: 40, bottom: 5 }}
+                                >
+                                    <XAxis type="number" hide />
+                                    <YAxis type="category" dataKey="name" width={100} tick={{fontSize: 10}} interval={0} />
+                                    <RechartsTooltip 
+                                        cursor={{fill: 'transparent'}}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                        formatter={(value) => [`R$ ${value.toFixed(0)}`, viewPeriod === 1 ? 'Anual' : '5 Anos']}
+                                    />
+                                    <Bar 
+                                        dataKey="value" 
+                                        radius={[0, 4, 4, 0]} 
+                                        barSize={20}
+                                        label={{ 
+                                            position: 'right', 
+                                            fill: '#64748b', 
+                                            fontSize: 10, 
+                                            fontWeight: 'bold',
+                                            formatter: (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+                                        }}
+                                    >
+                                        {chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                      )}
+
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 relative overflow-hidden">
+                        <h3 className="text-emerald-800 font-bold text-lg mb-2 z-10 relative">Recupere esse dinheiro</h3>
+                        <p className="text-emerald-700 text-sm mb-4 z-10 relative">
+                          Identificamos seu maior vazamento. Geramos um plano de ataque específico para você bloquear isso hoje.
+                        </p>
+                        <button 
+                            onClick={goToPlan}
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 z-10 relative"
+                        >
+                            Ver Meu Plano de Ação
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={resetAudit}
+                        className="w-full text-slate-400 hover:text-slate-600 text-xs py-2 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <RefreshCcw className="w-3 h-3" />
+                        Recalcular valores
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {step === 'action_plan' && (
+                  <div className="min-h-auto w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 font-sans animate-fade-in pb-24">
+                    <div className="bg-emerald-600 p-6 text-white">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            <ShieldCheck className="w-6 h-6" />
+                            Plano de Bloqueio Ativado
+                        </h2>
+                        <p className="text-emerald-100 text-sm mt-1">Sua prioridade nº 1 detectada:</p>
+                    </div>
+
+                    <div className="p-6 pb-2">
+                        
+                        {/* O Grande Vilão */}
+                        <div className="bg-white rounded-xl border-l-4 border-rose-500 shadow-sm p-5 relative mb-6">
+                            <div className="flex justify-between items-start mb-2">
+                                <h3 className="font-bold text-slate-800 text-lg">{topLeak.name}</h3>
+                                <span className="bg-rose-100 text-rose-700 text-xs font-bold px-2 py-1 rounded">
+                                    R$ {expenses[biggestLeak.id]}/mês
+                                </span>
+                            </div>
+                            <p className="text-slate-600 text-sm mb-4">
+                                Este é o item que mais atrasa seus 10k.
+                            </p>
+                            
+                            {/* A Dica Tática */}
+                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                                    <h4 className="font-bold text-slate-800 text-sm uppercase">{biggestLeak.tipTitle}</h4>
+                                </div>
+                                <p className="text-slate-600 text-sm leading-relaxed italic">
+                                    "{biggestLeak.tipContent}"
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Checklist de Compromisso */}
+                        <div className="space-y-3 mb-6">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Seu Compromisso Hoje</h4>
+                            
+                            <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors group">
+                                <div className={cn("mt-1 w-5 h-5 rounded border flex items-center justify-center transition-colors", committed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white')}>
+                                    {committed && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                                </div>
+                                <input 
+                                    type="checkbox" 
+                                    className="hidden" 
+                                    checked={committed} 
+                                    onChange={() => setCommitted(!committed)} 
+                                />
+                                <span className={cn("text-sm select-none", committed ? 'text-slate-900 font-medium' : 'text-slate-500')}>
+                                    Comprometo-me a aplicar a tática do <strong>{biggestLeak.tipTitle}</strong> pelos próximos 7 dias.
+                                </span>
+                            </label>
+                        </div>
+
+                        {/* Botão Final */}
+                        <button 
+                            disabled={!committed}
+                            onClick={() => alert("Parabéns! Compromisso salvo. Agora vá para a Aula 2 do curso para continuar seu progresso.")}
+                            className={cn("w-full font-bold py-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2", committed ? 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed')}
+                        >
+                            {committed ? (
+                                <>
+                                    Salvar e Ir para Aula 2
+                                    <ArrowRight className="w-4 h-4" />
+                                </>
+                            ) : (
+                                'Assine o compromisso acima'
+                            )}
+                        </button>
+                        
+                        <p className="text-[10px] text-center text-slate-400 mt-2 mb-8">
+                            Este diagnóstico faz parte do Módulo 1 do Protocolo 10K.
+                        </p>
+
+                        {/* CTA PARA A PRÓXIMA IDEIA (CALCULADORA DO PACTO) */}
+                        <div className="border-t border-slate-100 pt-8 pb-4">
+                            <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-xl p-5 text-white relative overflow-hidden shadow-lg group cursor-pointer hover:shadow-indigo-500/25 transition-all transform hover:-translate-y-1">
+                                 {/* Decorative element */}
+                                 <div className="absolute -top-6 -right-6 p-3 opacity-10 transform rotate-12">
+                                    <Calendar className="w-32 h-32 text-white" />
+                                </div>
+                                
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-2 mb-2">
+                                         <span className="bg-indigo-500/30 text-indigo-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-indigo-400/20">
+                                            Próxima Ferramenta
+                                        </span>
+                                    </div>
+                                    
+                                    <h3 className="font-bold text-lg mb-2 leading-tight flex items-center gap-2">
+                                        A meta de 10k parece impossível?
+                                        <TrendingUp className="w-4 h-4 text-indigo-300" />
+                                    </h3>
+                                    <p className="text-indigo-100 text-xs mb-4 leading-relaxed max-w-[90%]">
+                                        O cérebro paralisa com metas grandes. Use a <strong>Calculadora do Pacto</strong> e descubra a data exata que você terá seus 10 mil guardando o valor de um lanche.
+                                    </p>
+                                    
+                                    <button 
+                                        onClick={() => alert("Esta ferramenta estará disponível no Módulo 2!")}
+                                        className="w-full bg-white text-indigo-700 font-bold py-3 rounded-lg text-sm hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                                    >
+                                        Abrir Calculadora Reversa
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                  </div>
+                )}
+            </div>
+          );
         }
 
         // ==========================================
-        // 3. CALCULADORA 2.0
+        // MÓDULO 3: CALCULADORA DE METAS FINANCEIRAS 2.0 (Código Fiel)
         // ==========================================
+        
         function Calculadora_Tool({ onExit }) {
-            const [mode, setMode] = useState('daily');
-            const [target, setTarget] = useState(10000);
-            const [current, setCurrent] = useState(0);
-            const [daily, setDaily] = useState('');
-            const [date, setDate] = useState('');
-            const [useInterest, setUseInterest] = useState(false);
-            const [rate, setRate] = useState(0.8);
-            const [workdays, setWorkdays] = useState(false);
-            const [result, setResult] = useState(null);
+          // --- STATE ---
+          const [calculationMode, setCalculationMode] = useState('daily'); // 'daily' | 'date'
+          const [targetAmount, setTargetAmount] = useState(10000);
+          const [currentAmount, setCurrentAmount] = useState(0);
+          const [dailyContribution, setDailyContribution] = useState('');
+          const [targetDateInput, setTargetDateInput] = useState('');
+          const [useInterest, setUseInterest] = useState(false);
+          const [interestRate, setInterestRate] = useState(0.8); // Taxa customizável
+          const [onlyWorkdays, setOnlyWorkdays] = useState(false);
+          const [isCalculated, setIsCalculated] = useState(false);
 
-            const calc = (e) => {
-                e.preventDefault();
-                let acc = parseFloat(current), days = 0, data = [];
-                const dailyRate = useInterest ? (Math.pow(1 + (rate / 100), 1 / 30) - 1) : 0;
-                
-                if (mode === 'daily') {
-                    if (!daily) return;
-                    while (acc < target && days < 3650) {
-                        days++;
-                        if (useInterest) acc += acc * dailyRate;
-                        if (!workdays || (days % 7 !== 0 && days % 7 !== 6)) acc += parseFloat(daily);
-                        if (days % 30 === 0) data.push({ d: days, v: acc });
-                    }
-                } else {
-                     // Lógica simplificada para data
-                     const diff = Math.ceil((new Date(date) - new Date()) / (1000 * 60 * 60 * 24));
-                     days = diff;
-                     const req = (target - current) / diff; // Simplificado sem juros para solver rápido
-                     for(let i=0; i<diff; i+=30) data.push({d:i, v: current + (req*i)});
-                }
-                setResult({ days, data });
+          // --- PERSISTÊNCIA ---
+          useEffect(() => {
+            const savedData = localStorage.getItem('metas_financeiras_v4');
+            if (savedData) {
+              const parsed = JSON.parse(savedData);
+              setTargetAmount(parsed.targetAmount || 10000);
+              setCurrentAmount(parsed.currentAmount || 0);
+              setDailyContribution(parsed.dailyContribution || '');
+              setTargetDateInput(parsed.targetDateInput || '');
+              setUseInterest(parsed.useInterest || false);
+              setInterestRate(parsed.interestRate !== undefined ? parsed.interestRate : 0.8);
+              setCalculationMode(parsed.calculationMode || 'daily');
+              setOnlyWorkdays(parsed.onlyWorkdays || false);
+              
+              // Auto-revelar se houver dados suficientes
+              if ((parsed.calculationMode === 'daily' && parsed.dailyContribution > 0) || 
+                  (parsed.calculationMode === 'date' && parsed.targetDateInput)) {
+                setIsCalculated(true);
+              }
+            }
+          }, []);
+
+          useEffect(() => {
+            localStorage.setItem('metas_financeiras_v4', JSON.stringify({
+              targetAmount,
+              currentAmount,
+              dailyContribution,
+              targetDateInput,
+              useInterest,
+              interestRate,
+              calculationMode,
+              onlyWorkdays
+            }));
+          }, [targetAmount, currentAmount, dailyContribution, targetDateInput, useInterest, interestRate, calculationMode, onlyWorkdays]);
+
+          // --- ENGINE DE SIMULAÇÃO ---
+          const results = useMemo(() => {
+            const target = parseFloat(targetAmount) || 0;
+            const current = parseFloat(currentAmount) || 0;
+            const dailyInput = parseFloat(dailyContribution) || 0;
+            const rateVal = parseFloat(interestRate) || 0;
+            
+            const dailyRate = useInterest ? (Math.pow(1 + (rateVal / 100), 1/30) - 1) : 0;
+            
+            let calculatedDays = 0;
+            let requiredDaily = 0;
+            let chartData = [];
+            let totalInterestEarned = 0;
+            let finishDate = new Date();
+
+            const isWorkday = (date) => {
+              const day = date.getDay();
+              return day !== 0 && day !== 6;
             };
 
-            return (
-                <div className="relative w-full h-full bg-slate-50 overflow-y-auto pb-24">
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs flex justify-center pointer-events-none"><button onClick={onExit} className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all"><LayoutGrid size={16} className="text-emerald-400" /> Menu Principal</button></div>
-                    <div className="bg-white p-6 shadow-sm mb-6"><h1 className="text-2xl font-bold text-slate-900">Calculadora 2.0</h1></div>
-                    <div className="px-6 space-y-4">
-                        <div className="flex bg-white p-1 rounded-xl shadow-sm border"><button onClick={() => setMode('daily')} className={cn("flex-1 py-2 rounded-lg text-sm font-bold", mode === 'daily' ? "bg-indigo-100 text-indigo-700" : "text-slate-500")}>Valor Diário</button><button onClick={() => setMode('date')} className={cn("flex-1 py-2 rounded-lg text-sm font-bold", mode === 'date' ? "bg-indigo-100 text-indigo-700" : "text-slate-500")}>Data Limite</button></div>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
-                            <div><label className="text-xs font-bold text-slate-400 uppercase">Meta (R$)</label><input type="number" value={target} onChange={e => setTarget(e.target.value)} className="w-full p-3 border rounded-xl text-lg font-bold text-slate-900" /></div>
-                            <div><label className="text-xs font-bold text-slate-400 uppercase">Já Tenho (R$)</label><input type="number" value={current} onChange={e => setCurrent(e.target.value)} className="w-full p-3 border rounded-xl text-lg font-bold text-slate-900" /></div>
-                            {mode === 'daily' ? <div><label className="text-xs font-bold text-slate-400 uppercase">Aporte Diário</label><input type="number" value={daily} onChange={e => setDaily(e.target.value)} className="w-full p-3 border rounded-xl text-lg font-bold text-slate-900" /></div> : <div><label className="text-xs font-bold text-slate-400 uppercase">Data</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-3 border rounded-xl text-lg font-bold text-slate-900" /></div>}
-                             <div onClick={() => setUseInterest(!useInterest)} className="flex items-center gap-2 p-3 border rounded-xl cursor-pointer"><div className={cn("w-5 h-5 border rounded flex items-center justify-center", useInterest ? "bg-emerald-500 border-emerald-500" : "bg-white")}><Check size={14} className="text-white" /></div><span className="text-sm font-bold text-slate-700">Investindo (Juros)</span></div>
-                             {useInterest && <input type="number" value={rate} onChange={e => setRate(e.target.value)} className="w-full p-2 border rounded-lg text-slate-900" placeholder="Taxa %" />}
-                             <button onClick={calc} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg">Calcular</button>
+            // --- MODO 1: INPUT DIÁRIO -> DATA FINAL ---
+            if (calculationMode === 'daily') {
+              if (dailyInput <= 0) return null;
+              requiredDaily = dailyInput;
+
+              let simAmount = current;
+              let simDate = new Date();
+              simDate.setHours(0,0,0,0);
+              let daysCount = 0;
+              const maxDays = 365 * 100; // Limite de segurança
+
+              while (simAmount < target && daysCount < maxDays) {
+                daysCount++;
+                simDate.setDate(simDate.getDate() + 1);
+                
+                if (useInterest) {
+                  simAmount += simAmount * dailyRate;
+                }
+
+                if (!onlyWorkdays || isWorkday(simDate)) {
+                  simAmount += dailyInput;
+                }
+              }
+              
+              calculatedDays = daysCount;
+              finishDate = new Date(simDate);
+            } 
+            // --- MODO 2: DATA FINAL -> INPUT DIÁRIO (SOLVER) ---
+            else {
+              if (!targetDateInput) return null;
+              const today = new Date();
+              today.setHours(0,0,0,0);
+              const tDate = new Date(targetDateInput + 'T00:00:00');
+              
+              const diffTime = tDate - today;
+              calculatedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              
+              if (calculatedDays <= 0) return null;
+              finishDate = tDate;
+
+              let min = 0;
+              let max = target;
+              let iterations = 0;
+              
+              while (iterations < 20) {
+                const mid = (min + max) / 2;
+                let simAmount = current;
+                let simDate = new Date(today);
+                
+                for (let i = 0; i < calculatedDays; i++) {
+                  simDate.setDate(simDate.getDate() + 1);
+                  if (useInterest) simAmount += simAmount * dailyRate;
+                  if (!onlyWorkdays || isWorkday(simDate)) simAmount += mid;
+                }
+
+                if (simAmount >= target) max = mid;
+                else min = mid;
+                
+                iterations++;
+              }
+              requiredDaily = max;
+            }
+
+            // --- GERAR GRÁFICO ---
+            let plotAmount = current;
+            let plotInvested = current;
+            let plotDate = new Date();
+            plotDate.setHours(0,0,0,0);
+            
+            const points = 15;
+            const interval = Math.max(1, Math.ceil(calculatedDays / points));
+            
+            chartData.push({
+                date: plotDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+                total: Math.round(plotAmount),
+                investido: Math.round(plotInvested),
+                juros: 0
+            });
+
+            for (let i = 1; i <= calculatedDays; i++) {
+              plotDate.setDate(plotDate.getDate() + 1);
+              
+              if (useInterest) plotAmount += plotAmount * dailyRate;
+              
+              if (!onlyWorkdays || isWorkday(plotDate)) {
+                const contribution = requiredDaily;
+                plotAmount += contribution;
+                plotInvested += contribution;
+              }
+
+              if (i % interval === 0 || i === calculatedDays) {
+                chartData.push({
+                  date: plotDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+                  total: Math.round(Math.min(target * 1.5, plotAmount)),
+                  investido: Math.round(plotInvested),
+                  juros: Math.max(0, Math.round(plotAmount - plotInvested))
+                });
+              }
+            }
+            
+            totalInterestEarned = Math.max(0, plotAmount - plotInvested);
+
+            return {
+              daysToGoal: calculatedDays,
+              requiredDaily,
+              finishDate,
+              chartData,
+              totalInterestEarned,
+              formattedFinishDate: finishDate.toLocaleDateString('pt-BR', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })
+            };
+          }, [calculationMode, targetAmount, currentAmount, dailyContribution, targetDateInput, useInterest, onlyWorkdays, interestRate]);
+
+          // --- HANDLERS ---
+          const handleCalculate = (e) => {
+            e.preventDefault();
+            if (calculationMode === 'daily' && dailyContribution > 0) setIsCalculated(true);
+            if (calculationMode === 'date' && targetDateInput) setIsCalculated(true);
+            
+            setTimeout(() => {
+              document.getElementById('result-section')?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          };
+
+          const getComparisonText = (val) => {
+            if (val <= 10) return "menos que um café simples";
+            if (val <= 25) return "um lanche da tarde";
+            if (val <= 50) return "uma pizza barata";
+            if (val <= 100) return "um jantar fora";
+            return "um investimento sério";
+          };
+
+          return (
+            <div className="relative min-h-screen bg-slate-50 pb-24">
+                {/* Botão Global de Voltar ao Menu - ESTILO PÍLULA CENTRALIZADA */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-full max-w-xs flex justify-center pointer-events-none">
+                    <button 
+                        onClick={onExit}
+                        className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                    >
+                        <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                        Menu Principal
+                    </button>
+                </div>
+
+              {/* Header */}
+              <div className="bg-white border-b border-slate-200 px-6 py-8 mb-6 shadow-sm">
+                <div className="max-w-2xl mx-auto text-center">
+                  <div className="inline-flex items-center justify-center p-3 bg-indigo-100 rounded-full mb-4">
+                    <Lock className="w-8 h-8 text-indigo-600" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+                    Calculadora de Metas 2.0
+                  </h1>
+                  <p className="text-slate-600 text-lg">
+                    Planeje seu futuro com precisão matemática.
+                  </p>
+                </div>
+              </div>
+
+              <main className="max-w-2xl mx-auto px-4">
+                {/* Card Principal */}
+                <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mb-8">
+                  
+                  {/* TABS DE MODO */}
+                  <div className="flex border-b border-slate-100">
+                    <button
+                      onClick={() => { setCalculationMode('daily'); setIsCalculated(false); }}
+                      className={cn(
+                        "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-all",
+                        calculationMode === 'daily' 
+                          ? "bg-white text-indigo-600 border-b-2 border-indigo-600" 
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                      )}
+                    >
+                      <Banknote className="w-4 h-4" />
+                      Tenho um valor por dia
+                    </button>
+                    <button
+                      onClick={() => { setCalculationMode('date'); setIsCalculated(false); }}
+                      className={cn(
+                        "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-all",
+                        calculationMode === 'date' 
+                          ? "bg-white text-indigo-600 border-b-2 border-indigo-600" 
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                      )}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      Tenho uma data limite
+                    </button>
+                  </div>
+
+                  <div className="p-6 md:p-8">
+                    <form onSubmit={handleCalculate} className="space-y-6">
+                      
+                      {/* Meta e Valor Atual */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
+                            Qual sua meta?
+                          </label>
+                          <div className="relative">
+                            <Target className="absolute left-4 top-3.5 w-5 h-5 text-indigo-500" />
+                            <input
+                              type="number"
+                              value={targetAmount}
+                              onChange={(e) => setTargetAmount(e.target.value)}
+                              className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none"
+                              placeholder="10000"
+                            />
+                          </div>
                         </div>
-                        {result && <div className="bg-slate-900 text-white p-6 rounded-xl text-center"><p className="text-indigo-200 text-xs uppercase">Resultado</p><h2 className="text-4xl font-bold">{result.days} Dias</h2><div className="h-48 w-full mt-4"><ResponsiveContainer width="100%" height="100%"><AreaChart data={result.data}><Area type="monotone" dataKey="v" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.3} /></AreaChart></ResponsiveContainer></div></div>}
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
+                            Já tem guardado?
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-3.5 text-slate-400 font-bold">R$</span>
+                            <input
+                              type="number"
+                              value={currentAmount}
+                              onChange={(e) => setCurrentAmount(e.target.value)}
+                              className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none"
+                              placeholder="0,00"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Input Condicional */}
+                      <div className="p-5 bg-slate-50 rounded-xl border border-slate-200">
+                        {calculationMode === 'daily' ? (
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                              Quanto você pode guardar por dia?
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-4 top-3.5 text-slate-400 font-bold">R$</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={dailyContribution}
+                                onChange={(e) => setDailyContribution(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 text-slate-900 text-lg font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                placeholder="Ex: 20,00"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                              Quando você precisa do dinheiro?
+                            </label>
+                            <div className="relative">
+                              <Clock className="absolute left-4 top-3.5 w-5 h-5 text-indigo-500" />
+                              <input
+                                type="date"
+                                value={targetDateInput}
+                                min={new Date().toISOString().split('T')[0]}
+                                onChange={(e) => setTargetDateInput(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 text-slate-900 text-lg font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Seletor Fator Vida Real */}
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                          <span className="block text-xs font-bold uppercase text-slate-400 mb-3">
+                            Frequência de Aporte
+                          </span>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setOnlyWorkdays(false)}
+                              className={cn(
+                                "flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all",
+                                !onlyWorkdays
+                                  ? "bg-slate-800 text-white border-slate-800 shadow-md"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                              )}
+                            >
+                              <Sun className="w-4 h-4" />
+                              Todos os dias
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setOnlyWorkdays(true)}
+                              className={cn(
+                                "flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all",
+                                onlyWorkdays
+                                  ? "bg-slate-800 text-white border-slate-800 shadow-md"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                              )}
+                            >
+                              <Briefcase className="w-4 h-4" />
+                              Apenas dias úteis
+                            </button>
+                          </div>
+                          {onlyWorkdays && (
+                            <p className="text-xs text-indigo-600 mt-2 flex items-center gap-1 animate-fade-in">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Ótima escolha! Finais de semana livres de culpa.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Combo 2: O Acelerador (Investimento) COM INPUT DE TAXA */}
+                      <div 
+                        className={cn(
+                          "p-4 rounded-xl border transition-all cursor-pointer select-none",
+                          useInterest 
+                            ? "bg-emerald-50 border-emerald-200 ring-1 ring-emerald-500" 
+                            : "bg-white border-slate-200 hover:border-slate-300"
+                        )}
+                        onClick={() => setUseInterest(!useInterest)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-6 h-6 rounded-full border flex items-center justify-center transition-colors shrink-0",
+                            useInterest ? "bg-emerald-500 border-emerald-500" : "bg-white border-slate-300"
+                          )}>
+                            {useInterest && <CheckCircle2 className="w-4 h-4 text-white" />}
+                          </div>
+                          <div className="flex-1">
+                            <span className="block font-bold text-sm text-slate-800">
+                              Vou investir esse dinheiro
+                            </span>
+                            {!useInterest && (
+                              <span className="block text-xs text-slate-500">
+                                Ativar juros compostos (Padrão 0.8% a.m.)
+                              </span>
+                            )}
+                          </div>
+                          {useInterest && <Sparkles className="w-5 h-5 text-emerald-500 animate-pulse" />}
+                        </div>
+
+                        {/* Área expandida para input da taxa */}
+                        {useInterest && (
+                          <div 
+                            className="mt-4 pt-3 border-t border-emerald-200/60 animate-fade-in flex items-center gap-3"
+                            onClick={(e) => e.stopPropagation()} // Impede o clique de fechar o checkbox
+                          >
+                             <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
+                                <Percent className="w-4 h-4" />
+                             </div>
+                             <div className="flex-1">
+                                <label className="block text-xs font-bold text-emerald-800 uppercase mb-1">
+                                  Taxa Mensal (%)
+                                </label>
+                                <input 
+                                  type="number"
+                                  step="0.01"
+                                  value={interestRate}
+                                  onChange={(e) => setInterestRate(e.target.value)}
+                                  className="w-full md:w-32 bg-white border border-emerald-300 text-emerald-900 font-bold rounded px-2 py-1 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
+                             </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={calculationMode === 'daily' ? !dailyContribution : !targetDateInput}
+                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {calculationMode === 'daily' ? 'Calcular data' : 'Calcular esforço diário'} 
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* --- RESULTADOS --- */}
+                {isCalculated && results && (
+                  <div id="result-section" className="animate-fade-in space-y-6">
+                    
+                    {/* Card Hero */}
+                    <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-2xl shadow-xl text-white overflow-hidden relative">
+                      <div className="absolute top-0 right-0 p-32 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                      
+                      <div className="p-8 relative z-10">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                          <div>
+                            <p className="text-indigo-200 font-medium mb-1 uppercase tracking-wider text-xs">
+                              {calculationMode === 'daily' ? 'Você chegará lá em' : 'Para chegar lá você precisa guardar'}
+                            </p>
+                            
+                            {calculationMode === 'daily' ? (
+                              <h2 className="text-3xl md:text-4xl font-bold capitalize leading-tight text-white">
+                                {results.formattedFinishDate}
+                              </h2>
+                            ) : (
+                              <h2 className="text-4xl md:text-5xl font-bold text-emerald-400">
+                                R$ {results.requiredDaily.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                <span className="text-xl text-white/80 font-medium ml-2">/dia</span>
+                              </h2>
+                            )}
+                          </div>
+                          
+                          {calculationMode === 'daily' && (
+                             <div className="bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/10 text-center">
+                                <span className="block text-xs text-indigo-200 uppercase">Faltam</span>
+                                <span className="font-mono text-2xl font-bold text-white">{results.daysToGoal}</span>
+                                <span className="block text-xs text-white">dias</span>
+                             </div>
+                          )}
+                        </div>
+
+                        {/* Seção Extra: Mostra ganho com juros se ativado */}
+                        {useInterest && results.totalInterestEarned > 0 && (
+                          <div className="mt-6 pt-6 border-t border-white/10 flex items-center gap-4">
+                            <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+                              <TrendingUp className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-indigo-200">
+                                O poder dos juros compostos te deu:
+                              </p>
+                              <p className="text-lg font-bold text-emerald-400">
+                                + R$ {results.totalInterestEarned.toLocaleString('pt-BR')} 
+                                <span className="text-white text-sm font-normal ml-1">"de graça"</span>
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Insights Rápidos */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex gap-4 items-center">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                          <ArrowLeftRight className="w-5 h-5 text-slate-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 uppercase">Equivalência</p>
+                          <p className="text-sm text-slate-700 font-medium leading-tight">
+                            Esse valor diário custa {getComparisonText(results.requiredDaily)}.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex gap-4 items-center">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-slate-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 uppercase">Compromisso</p>
+                          <p className="text-sm text-slate-700 font-medium leading-tight">
+                            {onlyWorkdays 
+                              ? "Apenas dias úteis. Aproveite o fim de semana!" 
+                              : "Foco total, todos os dias."
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Gráfico de Área Evolutivo */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-indigo-600" />
+                          Evolução do Patrimônio
+                        </h3>
+                        {useInterest && (
+                          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold">
+                            Investimento ({interestRate}% a.m.)
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={results.chartData}
+                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorJuros" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis 
+                              dataKey="date" 
+                              tick={{fill: '#94a3b8', fontSize: 11}} 
+                              axisLine={false}
+                              tickLine={false}
+                              minTickGap={30}
+                            />
+                            <YAxis 
+                              tickFormatter={(value) => `k${value/1000}`}
+                              tick={{fill: '#94a3b8', fontSize: 11}}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              labelStyle={{ color: '#64748b', marginBottom: '4px' }}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="total" 
+                              name="Total Acumulado"
+                              stroke="#4f46e5" 
+                              strokeWidth={3}
+                              fillOpacity={1} 
+                              fill="url(#colorTotal)" 
+                              animationDuration={1500}
+                            />
+                            {useInterest && (
+                              <Area 
+                                type="monotone" 
+                                dataKey="juros" 
+                                name="Rendimento (Juros)"
+                                stroke="#10b981" 
+                                strokeWidth={2}
+                                strokeDasharray="4 4"
+                                fill="url(#colorJuros)"
+                              />
+                            )}
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="text-center py-6">
+                       <p className="text-slate-400 text-xs">
+                         *Simulação considera feriados como dias úteis para simplificação.
+                       </p>
+                    </div>
+
+                  </div>
+                )}
+              </main>
+            </div>
+          );
+        }
+
+        // ==========================================
+        // MÓDULO 4: O GUARDIÃO DO BOLSO (Código Fiel)
+        // ==========================================
+        
+        function Guardiao_Tool({ onExit }) {
+          // Estados da Aplicação
+          const [step, setStep] = useState('loading'); // loading, setup, home, input, result
+          const [salary, setSalary] = useState('');
+          const [workDays, setWorkDays] = useState(22); // Padrão comercial
+          const [hoursPerDay, setHoursPerDay] = useState(8);
+          
+          // Dados do Item desejado
+          const [itemName, setItemName] = useState('');
+          const [itemPrice, setItemPrice] = useState('');
+
+          // Carregar dados salvos ao iniciar
+          useEffect(() => {
+            const savedSalary = localStorage.getItem('blindagem_salary');
+            const savedDays = localStorage.getItem('blindagem_days');
+            
+            if (savedSalary) {
+              setSalary(parseFloat(savedSalary));
+              if (savedDays) setWorkDays(parseInt(savedDays));
+              setStep('home');
+            } else {
+              setStep('setup');
+            }
+          }, []);
+
+          // Salvar configurações
+          const saveConfig = (e) => {
+            e.preventDefault();
+            if (!salary || salary <= 0) return;
+            
+            localStorage.setItem('blindagem_salary', salary);
+            localStorage.setItem('blindagem_days', workDays);
+            setStep('home');
+          };
+
+          // Lógica de Cálculo
+          const calculateCostOfLife = () => {
+            if (!salary || !itemPrice) return { days: 0, hours: 0, percentage: 0 };
+
+            const hourlyRate = salary / (workDays * hoursPerDay);
+            const costInHours = itemPrice / hourlyRate;
+            const costInDays = costInHours / hoursPerDay;
+            const percentageOfIncome = (itemPrice / salary) * 100;
+
+            return {
+              days: costInDays.toFixed(1),
+              hours: costInHours.toFixed(1),
+              percentage: percentageOfIncome.toFixed(1),
+              hourlyRate
+            };
+          };
+
+          const stats = calculateCostOfLife();
+
+          // Resetar fluxo de compra
+          const resetFlow = () => {
+            setItemName('');
+            setItemPrice('');
+            setStep('home');
+          };
+
+          // --- Renderização das Telas ---
+
+          // TELA 1: Configuração (Onboarding)
+          if (step === 'setup') {
+            return (
+              <div className="relative w-full h-screen flex flex-col justify-center bg-white p-6 pb-24">
+                <button 
+                    onClick={onExit}
+                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                >
+                    <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                    Menu Principal
+                </button>
+
+                <div className="w-full max-w-md mx-auto">
+                    <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Shield className="w-8 h-8 text-indigo-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800">O Guardião de Bolso</h2>
+                    <p className="text-slate-500 mt-2">Para proteger seu dinheiro, precisamos saber quanto vale o seu tempo.</p>
+                    </div>
+
+                    <form onSubmit={saveConfig} className="space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Qual sua renda mensal líquida?</label>
+                        <div className="relative">
+                        <span className="absolute left-3 top-3 text-slate-400">R$</span>
+                        <input 
+                            type="number" 
+                            required
+                            value={salary}
+                            onChange={(e) => setSalary(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-lg text-slate-900"
+                            placeholder="0,00"
+                        />
+                        </div>
+                    </div>
+                    
+                    <button 
+                        type="submit"
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        Ativar Sistema <ArrowRight className="w-5 h-5" />
+                    </button>
+                    </form>
+                </div>
+              </div>
+            );
+          }
+
+          // TELA 2: Home / Botão de Pânico
+          if (step === 'home') {
+            return (
+              <div className="relative w-full h-screen flex flex-col bg-white p-6 pb-24 font-sans">
+                {/* Botão Global de Voltar ao Menu - ESTILO PÍLULA CENTRALIZADA */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-full max-w-xs flex justify-center pointer-events-none">
+                    <button 
+                        onClick={onExit}
+                        className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                    >
+                        <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                        Menu Principal
+                    </button>
+                </div>
+
+                <div className="w-full max-w-md mx-auto flex-1 flex flex-col">
+                    <div className="flex justify-between items-center mb-8">
+                    <div className="flex items-center gap-2 text-emerald-600 font-medium bg-emerald-50 px-3 py-1 rounded-full text-sm">
+                        <Shield className="w-4 h-4" />
+                        <span>Guardião Ativo</span>
+                    </div>
+                    <button onClick={() => setStep('setup')} className="text-slate-400 hover:text-indigo-600 transition-colors">
+                        <Settings className="w-5 h-5" />
+                    </button>
+                    </div>
+
+                    <div className="py-8 text-center flex-1 flex flex-col justify-center">
+                    <h1 className="text-3xl font-extrabold text-slate-800 mb-2">Sentiu o Impulso?</h1>
+                    <p className="text-slate-500 mb-8">Não compre nada antes de apertar o botão abaixo.</p>
+                    
+                    <button 
+                        onClick={() => setStep('input')}
+                        className="group relative w-48 h-48 mx-auto bg-red-500 hover:bg-red-600 rounded-full shadow-red-200 shadow-2xl flex flex-col items-center justify-center text-white transition-all duration-300 transform hover:scale-105 active:scale-95"
+                    >
+                        <span className="absolute inset-0 rounded-full bg-red-400 opacity-20 animate-ping"></span>
+                        <AlertTriangle className="w-12 h-12 mb-2" />
+                        <span className="font-bold text-lg uppercase tracking-wider">Quero<br/>Gastar</span>
+                    </button>
+                    </div>
+
+                    <p className="text-xs text-slate-400 mt-8 text-center">
+                    "A riqueza é o que você não vê (não gasta)."
+                    </p>
+                </div>
+              </div>
+            );
+          }
+
+          // TELA 3: Input do Item
+          if (step === 'input') {
+            return (
+              <div className="relative w-full h-screen bg-white p-6 pb-24 font-sans">
+                {/* Botão Global de Voltar ao Menu - ESTILO PÍLULA CENTRALIZADA */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-full max-w-xs flex justify-center pointer-events-none">
+                    <button 
+                        onClick={onExit}
+                        className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                    >
+                        <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                        Menu Principal
+                    </button>
+                </div>
+
+                <div className="w-full max-w-md mx-auto">
+                    <button onClick={() => setStep('home')} className="flex items-center text-slate-400 hover:text-slate-600 mb-6 transition-colors">
+                    <RotateCcw className="w-4 h-4 mr-1" /> Voltar
+                    </button>
+
+                    <h2 className="text-2xl font-bold text-slate-800 mb-6">O que está tentando te seduzir?</h2>
+
+                    <div className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Nome do item (Opcional)</label>
+                        <input 
+                        type="text" 
+                        value={itemName}
+                        onChange={(e) => setItemName(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900"
+                        placeholder="Ex: Tênis novo, Jantar caro..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Preço (R$)</label>
+                        <div className="relative">
+                        <span className="absolute left-3 top-3 text-slate-400">R$</span>
+                        <input 
+                            type="number" 
+                            value={itemPrice}
+                            onChange={(e) => setItemPrice(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all text-lg font-semibold text-slate-800"
+                            placeholder="0,00"
+                            autoFocus
+                        />
+                        </div>
+                    </div>
+
+                    <button 
+                        disabled={!itemPrice}
+                        onClick={() => setStep('result')}
+                        className="w-full mt-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        Revelar Custo Real <ArrowRight className="w-5 h-5" />
+                    </button>
                     </div>
                 </div>
+              </div>
             );
-        }
+          }
 
-        // ==========================================
-        // 4. GUARDIÃO
-        // ==========================================
-        function Guardiao_Tool({ onExit }) {
-            const [view, setView] = useState('input');
-            const [salary, setSalary] = useState('');
-            const [price, setPrice] = useState('');
-            const days = price && salary ? (price / (salary / 22)) : 0;
-            const perc = price && salary ? ((price / salary) * 100).toFixed(1) : 0;
-
+          // TELA 4: O Veredito (Resultado)
+          if (step === 'result') {
             return (
-                <div className="relative w-full h-full bg-white flex flex-col justify-center p-6 pb-24 font-sans overflow-y-auto">
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs flex justify-center pointer-events-none"><button onClick={onExit} className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all"><LayoutGrid size={16} className="text-emerald-400" /> Menu Principal</button></div>
-                    {view === 'input' ? (
-                        <div className="w-full max-w-md mx-auto space-y-6">
-                            <div className="text-center"><div className="w-16 h-16 bg-red-100 rounded-full flex justify-center items-center mx-auto mb-4"><Shield className="text-red-600" size={32} /></div><h2 className="text-2xl font-bold text-slate-800">Guardião de Bolso</h2></div>
-                            <div><label className="text-sm font-bold text-slate-700">Renda Mensal</label><input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-4 border rounded-xl text-lg text-slate-900" /></div>
-                            <div><label className="text-sm font-bold text-slate-700">Preço do Item</label><input type="number" value={price} onChange={e => setPrice(e.target.value)} className="w-full p-4 border rounded-xl text-lg text-slate-900" /></div>
-                            <button onClick={() => setView('result')} disabled={!price} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl">Ver Custo Real</button>
+              <div className="relative w-full h-screen bg-white font-sans overflow-hidden flex flex-col pb-24">
+                {/* Botão Global de Voltar ao Menu - ESTILO PÍLULA CENTRALIZADA */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-full max-w-xs flex justify-center pointer-events-none">
+                    <button 
+                        onClick={onExit}
+                        className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                    >
+                        <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                        Menu Principal
+                    </button>
+                </div>
+
+                <div className="w-full max-w-md mx-auto flex-1 flex flex-col">
+                    {/* Cabeçalho Dramático */}
+                    <div className="bg-slate-900 p-6 text-white text-center rounded-b-3xl shadow-xl mb-6">
+                    <p className="text-slate-400 text-sm uppercase tracking-widest mb-1">Custo Real de Vida</p>
+                    <h2 className="text-3xl font-bold text-white mb-2">{formatCurrency(itemPrice)}</h2>
+                    <p className="text-slate-400 text-sm italic">{itemName || 'Este item'}</p>
+                    </div>
+
+                    <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                    {/* Cartões de Impacto */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex flex-col items-center justify-center text-center">
+                        <Clock className="w-6 h-6 text-orange-500 mb-2" />
+                        <span className="text-2xl font-bold text-orange-700">{stats.hours}h</span>
+                        <span className="text-xs text-orange-600 font-medium">de Trabalho</span>
                         </div>
-                    ) : (
-                        <div className="bg-slate-900 p-8 rounded-2xl text-center text-white w-full max-w-md mx-auto"><h2 className="text-6xl font-black mb-2">{Math.ceil(days)}</h2><p className="text-xl text-slate-300 mb-6">Dias de Trabalho</p><p className="mb-8 text-slate-400">Isso custa <strong>{perc}%</strong> do seu mês.</p><button onClick={() => setView('input')} className="w-full bg-emerald-500 py-3 rounded-xl font-bold mb-3">Desisti (Venci!)</button><button onClick={() => setView('input')} className="w-full border border-slate-700 py-3 rounded-xl text-slate-400">Comprar mesmo assim</button></div>
-                    )}
+                        <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col items-center justify-center text-center">
+                        <Banknote className="w-6 h-6 text-red-500 mb-2" />
+                        <span className="text-2xl font-bold text-red-700">{stats.days} Dias</span>
+                        <span className="text-xs text-red-600 font-medium">de Liberdade</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <p className="text-slate-600 text-sm leading-relaxed text-center">
+                        Para comprar isso, você precisa trabalhar <strong>{Math.ceil(stats.days)} dias</strong> seguidos apenas para pagar a conta. Isso consome <strong>{stats.percentage}%</strong> da sua renda mensal.
+                        </p>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <p className="text-center font-bold text-slate-800 mb-4">Qual sua decisão?</p>
+                        
+                        <button 
+                        onClick={resetFlow}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                        >
+                        <CheckCircle2 className="w-5 h-5" />
+                        Desisti da compra (Venci!)
+                        </button>
+
+                        <button 
+                        onClick={resetFlow}
+                        className="w-full bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-red-500 font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                        <XCircle className="w-5 h-5" />
+                        Vou comprar mesmo assim
+                        </button>
+                    </div>
+                    </div>
                 </div>
+              </div>
             );
+          }
+
+          return null;
         }
 
         // ==========================================
-        // 5. GERADOR DE NÃO
+        // MÓDULO 5: GERADOR DE NÃO (Código Fiel)
         // ==========================================
+        
+        const PERSON_TYPES = [
+          { id: 'amigo', label: 'Amigo Próximo', icon: Users },
+          { id: 'parente', label: 'Parente/Família', icon: ShieldCheck },
+          { id: 'colega', label: 'Colega de Trabalho', icon: MessageSquare },
+          { id: 'conhecido', label: 'Conhecido/Outros', icon: Smartphone },
+        ];
+
+        const PRESSURE_LEVELS = [
+          { id: 'leve', label: 'Curiosidade/Leve', color: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+          { id: 'direto', label: 'Pedido Direto', color: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+          { id: 'urgente', label: 'Pressão/Urgência', color: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+        ];
+
+        const SCRIPTS = {
+          amigo: {
+            leve: [
+              "Poxa, fico feliz que esteja se organizando! No momento eu defini metas bem rígidas para o meu capital e ele está todo alocado em investimentos de longo prazo, então não consigo mexer.",
+              "Cara, esse mês estou num 'detox financeiro' total. Cortei tudo o que não é essencial para fechar as contas, então estou zerado.",
+              "Minha grana está toda automatizada agora. Cai na conta e já vai para as aplicações para não correr o risco de eu gastar. Nem vejo a cor!",
+              "Decidi seguir um plano financeiro bem agressivo esse ano, então meu fluxo de caixa livre está praticamente inexistente.",
+              "Estou focado em quitar umas pendências antigas, então estou 'fora do mercado' para qualquer movimentação financeira extra."
+            ],
+            direto: [
+              "Cara, eu adoraria poder ajudar um amigo, mas fiz um pacto comigo mesmo de não emprestar dinheiro para não arriscar nossa amizade. Você é importante demais para mim.",
+              "Putz, vou ficar te devendo essa. Tenho uma regra pessoal de não misturar dinheiro com amizade porque já tive experiências ruins no passado.",
+              "Gostaria muito de ajudar, mas meu orçamento já está fechado para o mês e não tenho margem para saques não programados.",
+              "Sinceramente? Não tenho como. Minha reserva está bloqueada em um investimento que não posso resgatar agora sem perder dinheiro.",
+              "Cara, não consigo. Estou com o cinto apertado esse mês por conta de uns imprevistos que tive em casa."
+            ],
+            urgente: [
+              "Sinto muito pelo que está passando. Infelizmente, meu orçamento deste mês já está totalmente comprometido com compromissos fixos e não tenho margem para ajudar agora.",
+              "Que situação chata, sinto muito mesmo. Queria poder fazer algo, mas financeiramente estou totalmente travado no momento.",
+              "Poxa vida. Olha, dinheiro eu não tenho como disponibilizar agora pois também estou no limite, mas se precisar de ajuda para organizar as coisas, conte comigo.",
+              "Infelizmente não consigo te socorrer financeiramente. Tive que usar minha reserva recentemente e ainda estou repondo.",
+              "Torcendo muito para você resolver isso, mas financeiramente não tenho como contribuir agora. Minhas contas já consumiram tudo o que entrou."
+            ]
+          },
+          parente: {
+            leve: [
+              "Oi! Então, organizei meu dinheiro de um jeito que ele fica 'preso' em aplicações para o futuro. Não tenho liquidez para emprestar agora.",
+              "Sabe como é, decidi levar a sério a aposentadoria e tudo o que sobra vai direto para o fundo, não deixo nada na conta corrente.",
+              "Estou numa fase de economia de guerra por aqui para atingir uma meta familiar, então o cofre está fechado.",
+              "Infelizmente não rola, estou com o orçamento bem justo esse mês por conta dos reajustes de preços gerais.",
+              "Minha política atual é: entrou, investiu. Não estou trabalhando com sobras no momento."
+            ],
+            direto: [
+              "Entendo a situação, mas decidi por regra familiar não misturar finanças com parentesco para evitar qualquer mal-entendido futuro.",
+              "Olha, eu e [Cônjuge/Parceiro] combinamos de não fazer empréstimos para ninguém para focar nos nossos objetivos de casa. Espero que entenda.",
+              "Não consigo te atender com esse valor. Meu dinheiro está todo comprometido com despesas fixas e educação.",
+              "Poxa, fico te devendo. Tenho uma política rígida de não emprestar para família para preservar a boa convivência nos almoços de domingo!",
+              "Infelizmente não tenho disponibilidade. Tivemos alguns gastos inesperados aqui e estamos recompondo o caixa."
+            ],
+            urgente: [
+              "Nossa, que situação complicada. Infelizmente eu não tenho como ajudar financeiramente agora, pois meu fundo de reserva também está limitado.",
+              "Sinto muito mesmo. Se fosse em outro momento talvez desse, mas agora estou sem margem de manobra nenhuma no banco.",
+              "É muito difícil dizer não numa hora dessas, mas realmente não tenho esse valor disponível. Está tudo alocado em contas que não posso mexer.",
+              "Queria muito poder ajudar, mas minhas finanças estão no limite este mês. Espero que consiga resolver logo!",
+              "Infelizmente não consigo. Estou pagando umas coisas altas esse mês e não sobrou nada livre."
+            ]
+          },
+          colega: {
+            leve: [
+              "Eu adoraria, mas eu separo minhas finanças pessoais de forma muito estrita e não tenho verba disponível fora do meu planejamento.",
+              "Vixi, esse mês estou 'vendendo o almoço para pagar a janta'. Sem chance de movimentar nada.",
+              "Estou focado nuns projetos pessoais que estão consumindo todo meu salário, não tenho liquidez.",
+              "Agradeço a lembrança, mas meu dinheiro está todo carimbado para contas a pagar.",
+              "Não consigo, meu consultor financeiro puxaria minha orelha! Estou seguindo um plano à risca."
+            ],
+            direto: [
+              "Putz, te entendo, mas tenho como regra pessoal nunca fazer transações financeiras com colegas de trabalho para manter o ambiente profissional leve.",
+              "Cara, infelizmente não rola. Meu orçamento é bem fechado e não tenho margem para empréstimos.",
+              "Prefiro não misturar as coisas. Dinheiro e trabalho no mesmo lugar costuma dar dor de cabeça, prefiro evitar.",
+              "Estou zerado. Tive uns gastos extras e meu cartão já virou o mês no vermelho.",
+              "Fico te devendo essa. Prometi para mim mesmo que não emprestaria dinheiro este ano para focar em sair das minhas próprias dívidas."
+            ],
+            urgente: [
+              "Sinto muito, mas meu planejamento financeiro deste mês já está fechado e sem margem para extras. Realmente não consigo ajudar.",
+              "Que barra. Infelizmente, financeiramente não tenho como fazer nada, estou no meu limite também.",
+              "Gostaria de ajudar, mas não tenho disponibilidade de caixa agora. Espero que tudo se resolva.",
+              "Infelizmente não é possível. Meu salário já está todo comprometido antes mesmo de cair na conta.",
+              "Sinto muito, mas não tenho como. Boa sorte aí na resolução!"
+            ]
+          },
+          conhecido: {
+            leve: [
+              "Agradeço a confiança, mas meu capital está todo comprometido em projetos pessoais no momento.",
+              "Não tenho disponibilidade financeira agora, meu dinheiro fica todo em aplicações sem liquidez diária.",
+              "Estou num momento de contenção de despesas, não estou fazendo nenhuma movimentação extra.",
+              "Infelizmente não, meu orçamento é bem restrito.",
+              "No momento não consigo, estou focado em outros compromissos financeiros."
+            ],
+            direto: [
+              "Infelizmente eu não faço empréstimos pessoais. Tenho metas financeiras muito rígidas.",
+              "Não consigo te ajudar. Meu dinheiro tem destino certo todo mês e não sobra margem.",
+              "Agradeço o contato, mas não empresto dinheiro. É uma política pessoal que adotei.",
+              "Estou sem disponibilidade de caixa no momento.",
+              "Não será possível, meu orçamento já está fechado."
+            ],
+            urgente: [
+              "Sinto muito pela situação, mas não tenho disponibilidade financeira para ajudar agora.",
+              "Espero que consiga resolver, mas financeiramente não tenho como contribuir.",
+              "Infelizmente não tenho recursos disponíveis para empréstimo.",
+              "Situação difícil, mas realmente não tenho como ajudar com valores.",
+              "Sinto muito, mas não tenho liquidez para te socorrer agora."
+            ]
+          }
+        };
+
         function Gerador_Tool({ onExit }) {
-            const [txt, setTxt] = useState('');
-            const scripts = { amigo: ["Cara, tô num aperto agora.", "Meu dinheiro tá preso em investimento."], parente: ["Não misturo dinheiro com família.", "Tive gastos imprevistos."], colega: ["Não empresto por regra pessoal.", "Tô zerado esse mês."] };
-            const gen = (w) => { const l = scripts[w]; setTxt(l[Math.floor(Math.random() * l.length)]); };
+          const [who, setWho] = useState('');
+          const [pressure, setPressure] = useState('');
+          const [script, setScript] = useState('');
+          const [scriptIndex, setScriptIndex] = useState(0); 
+          const [copied, setCopied] = useState(false);
+          const [history, setHistory] = useState([]);
 
-            return (
-                <div className="relative w-full h-full bg-white p-6 pb-24 font-sans overflow-y-auto">
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs flex justify-center pointer-events-none"><button onClick={onExit} className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all"><LayoutGrid size={16} className="text-emerald-400" /> Menu Principal</button></div>
-                    <div className="text-center mb-8"><div className="w-16 h-16 bg-indigo-100 rounded-2xl flex justify-center items-center mx-auto mb-4"><ShieldBan className="text-purple-600" size={32} /></div><h1 className="text-2xl font-bold text-slate-900">Gerador de NÃO</h1></div>
-                    {!txt ? (
-                        <div className="space-y-4 max-w-md mx-auto"><p className="text-slate-500 font-bold">Quem pediu?</p><button onClick={() => gen('amigo')} className="w-full p-4 border rounded-xl flex items-center gap-3 font-bold text-slate-700 hover:bg-slate-50"><Users className="text-emerald-500" /> Amigo</button><button onClick={() => gen('parente')} className="w-full p-4 border rounded-xl flex items-center gap-3 font-bold text-slate-700 hover:bg-slate-50"><Home className="text-blue-500" /> Parente</button><button onClick={() => gen('colega')} className="w-full p-4 border rounded-xl flex items-center gap-3 font-bold text-slate-700 hover:bg-slate-50"><Briefcase className="text-purple-500" /> Colega</button></div>
-                    ) : (
-                        <div className="max-w-md mx-auto animate-fade-in"><div className="bg-slate-900 text-white p-6 rounded-2xl italic text-lg mb-6 relative"><Quote className="absolute top-4 left-4 opacity-20" size={40} />"{txt}"</div><button onClick={() => { navigator.clipboard.writeText(txt); alert('Copiado!'); }} className="w-full bg-emerald-500 text-white font-bold py-4 rounded-xl mb-3 flex justify-center gap-2"><Copy /> Copiar</button><button onClick={() => setTxt('')} className="w-full border py-4 rounded-xl font-bold text-slate-500">Voltar</button></div>
-                    )}
+          useEffect(() => {
+            const savedHistory = localStorage.getItem('no_generator_history');
+            if (savedHistory) {
+              setHistory(JSON.parse(savedHistory));
+            }
+            
+            const lastSession = localStorage.getItem('no_generator_last');
+            if (lastSession) {
+              const { who: lastWho, pressure: lastPressure } = JSON.parse(lastSession);
+              setWho(lastWho);
+              setPressure(lastPressure);
+            }
+          }, []);
+
+          useEffect(() => {
+            if (who && pressure) {
+              const variations = SCRIPTS[who][pressure];
+              const randomIndex = Math.floor(Math.random() * variations.length);
+              setScriptIndex(randomIndex);
+              setScript(variations[randomIndex]);
+              localStorage.setItem('no_generator_last', JSON.stringify({ who, pressure }));
+            }
+          }, [who, pressure]);
+
+          const handleShuffle = () => {
+            if (!who || !pressure) return;
+            const variations = SCRIPTS[who][pressure];
+            let nextIndex = scriptIndex + 1;
+            if (nextIndex >= variations.length) nextIndex = 0;
+            
+            setScriptIndex(nextIndex);
+            setScript(variations[nextIndex]);
+            setCopied(false);
+          };
+
+          const handleCopy = () => {
+            if (!script) return;
+            
+            const textArea = document.createElement("textarea");
+            textArea.value = script;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+              document.execCommand('copy');
+              setCopied(true);
+              
+              const isDuplicate = history.length > 0 && history[0].text === script;
+              
+              if (!isDuplicate) {
+                const newEntry = { id: Date.now(), text: script, date: new Date().toLocaleDateString() };
+                const updatedHistory = [newEntry, ...history.slice(0, 4)]; 
+                setHistory(updatedHistory);
+                localStorage.setItem('no_generator_history', JSON.stringify(updatedHistory));
+              }
+              
+              setTimeout(() => setCopied(false), 2000);
+            } catch (err) {
+              console.error('Erro ao copiar', err);
+            }
+            document.body.removeChild(textArea);
+          };
+
+          const reset = () => {
+            setWho('');
+            setPressure('');
+            setScript('');
+          };
+
+          return (
+            <div className="relative w-full min-h-screen bg-white p-6 pb-24 font-sans text-slate-900">
+                {/* Botão Global de Voltar ao Menu - ESTILO PÍLULA CENTRALIZADA */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-full max-w-xs flex justify-center pointer-events-none">
+                    <button 
+                        onClick={onExit}
+                        className="pointer-events-auto bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700/50 flex items-center gap-2 font-bold text-sm hover:scale-105 active:scale-95 transition-all group"
+                    >
+                        <LayoutGrid size={16} className="text-emerald-400 group-hover:rotate-90 transition-transform" /> 
+                        Menu Principal
+                    </button>
                 </div>
-            );
+
+              {/* Header */}
+              <header className="mb-8 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl mb-4 shadow-sm">
+                  <ShieldBan size={32} />
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">
+                  Gerador de NÃO Financeiro
+                </h1>
+                <p className="text-slate-500 max-w-md mx-auto">
+                  Proteja sua saúde financeira. Gere respostas educadas e firmes para recusar pedidos de dinheiro.
+                </p>
+              </header>
+
+              <main className="space-y-8 max-w-2xl mx-auto">
+                {/* Step 1: Quem? */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-wider">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-xs font-bold">1</span>
+                    Quem está pedindo?
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {PERSON_TYPES.map((type) => (
+                      <button
+                        key={type.id}
+                        onClick={() => setWho(type.id)}
+                        className={cn(
+                          "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 gap-2 group relative overflow-hidden",
+                          who === type.id 
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-md scale-[1.02]" 
+                            : "border-slate-100 hover:border-slate-200 text-slate-600 hover:bg-slate-50 hover:shadow-sm"
+                        )}
+                      >
+                        <type.icon size={24} className={cn("transition-colors", who === type.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-500")} />
+                        <span className="text-xs font-bold">{type.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Step 2: Nível de Pressão */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-wider">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-xs font-bold">2</span>
+                    Qual o tom do pedido?
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {PRESSURE_LEVELS.map((level) => (
+                      <button
+                        key={level.id}
+                        onClick={() => setPressure(level.id)}
+                        className={cn(
+                          "flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-200 text-left",
+                          pressure === level.id 
+                            ? cn("border-indigo-600 ring-1 ring-indigo-600/20 shadow-md scale-[1.01]", level.color, level.text)
+                            : "border-slate-100 hover:border-slate-200 text-slate-600 hover:bg-slate-50"
+                        )}
+                      >
+                        <span className="text-sm font-bold">{level.label}</span>
+                        {pressure === level.id && <Check size={18} className="animate-in fade-in zoom-in duration-300" />}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Output Section */}
+                {script && (
+                  <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-slate-900 rounded-2xl p-6 md:p-8 text-white shadow-2xl relative overflow-hidden ring-1 ring-white/10">
+                      {/* Background decorative element */}
+                      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                        <AlertCircle size={120} />
+                      </div>
+                      
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center gap-2 text-indigo-400 font-medium text-sm bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                            Script Gerado (Opção {scriptIndex + 1}/5)
+                          </div>
+                          
+                          <button 
+                            onClick={handleShuffle}
+                            className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-1.5 rounded-lg transition-colors border border-transparent hover:border-slate-700"
+                            title="Tentar outra variação"
+                          >
+                            <Shuffle size={14} />
+                            Ver Outra Opção
+                          </button>
+                        </div>
+                        
+                        <div className="min-h-[120px] flex items-center">
+                          <p className="text-lg md:text-xl leading-relaxed font-serif italic text-slate-100 animate-in fade-in duration-300">
+                            "{script}"
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 mt-8">
+                          <button
+                            onClick={handleCopy}
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-2 py-4 px-6 rounded-xl font-bold text-lg transition-all active:scale-95 shadow-lg",
+                              copied 
+                                ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-900/20" 
+                                : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/30"
+                            )}
+                          >
+                            {copied ? (
+                              <>
+                                <Check size={24} /> Copiado!
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={20} /> Copiar para WhatsApp
+                              </>
+                            )}
+                          </button>
+                          
+                          <button
+                            onClick={reset}
+                            className="flex items-center justify-center gap-2 py-4 px-6 rounded-xl font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all border border-slate-700 hover:border-slate-600"
+                          >
+                            <RefreshCw size={18} /> Limpar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <p className="text-center text-xs text-slate-400 mt-3">
+                      Dica: Personalize levemente antes de enviar para soar ainda mais natural.
+                    </p>
+                  </section>
+                )}
+
+                {/* Histórico */}
+                {history.length > 0 && !script && (
+                  <section className="pt-6 border-t border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wide">
+                      <RefreshCw size={14} /> Usados Recentemente
+                    </h3>
+                    <div className="space-y-3">
+                      {history.map((item) => (
+                        <div 
+                          key={item.id} 
+                          className="p-4 bg-white rounded-lg text-sm text-slate-600 border border-slate-100 hover:border-indigo-200 hover:shadow-sm transition-all flex justify-between items-center group"
+                        >
+                          <span className="truncate mr-4 italic text-slate-500">"{item.text}"</span>
+                          <button 
+                            onClick={() => {
+                               setScript(item.text);
+                               window.scrollTo({ top: 400, behavior: 'smooth' });
+                            }}
+                            className="text-indigo-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity bg-indigo-50 px-3 py-1.5 rounded-md"
+                          >
+                            Reutilizar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Dica de Especialista - Sempre visível se não houver script, ou abaixo do script */}
+                {!script && (
+                  <div className="p-5 bg-indigo-50 border border-indigo-100 rounded-xl flex gap-4 items-start shadow-sm">
+                    <div className="bg-white p-2 rounded-full shadow-sm text-indigo-600">
+                        <AlertCircle size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-indigo-900 mb-1">Psicologia do "Não"</h4>
+                      <p className="text-sm text-indigo-700 leading-relaxed">
+                        A melhor técnica é a <strong>"Negativa Assertiva"</strong>: Seja breve, firme e educado. Evite inventar mentiras complexas, pois elas exigem manutenção. Use regras pessoais ("Não empresto por princípio") em vez de circunstâncias ("Hoje não tenho").
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </main>
+
+              <footer className="mt-16 py-8 text-center border-t border-slate-100">
+                <p className="text-slate-400 text-xs font-medium">
+                  Ferramenta de Defesa Financeira • Seus dados ficam salvos apenas no navegador.
+                </p>
+              </footer>
+            </div>
+          );
         }
 
         // ==========================================
-        // LAUNCHER
+        // LAUNCHER DO SUPER APP
         // ==========================================
         function Launcher({ onLaunch }) {
             return (
-                <div className="w-full h-full bg-slate-900 text-white p-6 animate-fade-in pb-24 font-sans overflow-y-auto">
-                    <header className="mb-8 mt-4 flex justify-between items-center shrink-0"><div><h1 className="text-2xl font-extrabold">10k em Silêncio</h1><p className="text-slate-400 text-xs font-bold uppercase">Super App</p></div><div className="bg-emerald-500/20 p-2 rounded-full border border-emerald-500/30 text-emerald-400"><Crown size={20} /></div></header>
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                        <button onClick={() => onLaunch('empilhador')} className="bg-slate-800 p-5 rounded-2xl border border-slate-700 text-left hover:bg-slate-700 transition-colors group"><Mountain size={32} className="text-emerald-400 mb-3 group-hover:scale-110 transition-transform" /><h3 className="font-bold text-lg">Empilhador</h3><p className="text-xs text-slate-400">Construa patrimônio</p></button>
-                        <button onClick={() => onLaunch('detector')} className="bg-slate-800 p-5 rounded-2xl border border-slate-700 text-left hover:bg-slate-700 transition-colors group"><Search size={32} className="text-amber-400 mb-3 group-hover:scale-110 transition-transform" /><h3 className="font-bold text-lg">Detector</h3><p className="text-xs text-slate-400">Ache vazamentos</p></button>
-                    </div>
-                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Bônus</h2>
-                    <div className="space-y-3">
-                        <button onClick={() => onLaunch('calc')} className="w-full bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex items-center gap-4 hover:bg-slate-800"><div className="bg-indigo-500/20 p-2 rounded text-indigo-400"><Lock size={20} /></div><div className="text-left"><h3 className="font-bold">Calculadora 2.0</h3></div><ArrowRight className="ml-auto text-slate-600" size={16} /></button>
-                        <button onClick={() => onLaunch('guardiao')} className="w-full bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex items-center gap-4 hover:bg-slate-800"><div className="bg-red-500/20 p-2 rounded text-red-400"><Shield size={20} /></div><div className="text-left"><h3 className="font-bold">Guardião</h3></div><ArrowRight className="ml-auto text-slate-600" size={16} /></button>
-                        <button onClick={() => onLaunch('gerador')} className="w-full bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex items-center gap-4 hover:bg-slate-800"><div className="bg-purple-500/20 p-2 rounded text-purple-400"><ShieldBan size={20} /></div><div className="text-left"><h3 className="font-bold">Gerador de NÃO</h3></div><ArrowRight className="ml-auto text-slate-600" size={16} /></button>
-                    </div>
+                <div className="w-full min-h-screen bg-slate-900 text-white p-6 animate-fade-in pb-24 font-sans">
+                    <header className="mb-8 mt-4 flex items-center justify-between">
+                        <div>
+                            <h1 className="text-2xl font-extrabold tracking-tight text-white">10k em Silêncio</h1>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Super App Financeiro</p>
+                        </div>
+                        <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+                            <Crown size={20} />
+                        </div>
+                    </header>
+
+                    <section className="mb-8">
+                        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Ferramentas Principais</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={() => onLaunch('empilhador')} className="bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all p-5 rounded-2xl border border-slate-700 text-left group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full -mr-4 -mt-4 blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+                                <Mountain size={32} className="text-emerald-400 mb-3 relative z-10" />
+                                <h3 className="font-bold text-lg leading-tight relative z-10">Empilhador</h3>
+                                <p className="text-xs text-slate-400 mt-1 relative z-10">Construa seu patrimônio.</p>
+                            </button>
+                            
+                            <button onClick={() => onLaunch('detector')} className="bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all p-5 rounded-2xl border border-slate-700 text-left group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full -mr-4 -mt-4 blur-xl group-hover:bg-amber-500/20 transition-all"></div>
+                                <Search size={32} className="text-amber-400 mb-3 relative z-10" />
+                                <h3 className="font-bold text-lg leading-tight relative z-10">Detector</h3>
+                                <p className="text-xs text-slate-400 mt-1 relative z-10">Ache vazamentos.</p>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Bônus Exclusivos</h2>
+                        <div className="space-y-3">
+                            <button onClick={() => onLaunch('calculadora')} className="w-full bg-slate-800/50 hover:bg-slate-800 active:scale-95 transition-all p-4 rounded-xl border border-slate-700/50 flex items-center gap-4 cursor-pointer text-left">
+                                <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400"><Lock size={20} /></div>
+                                <div><h3 className="font-bold text-slate-200">Calculadora 2.0</h3><p className="text-xs text-slate-500">Planeje sua meta de 10k.</p></div>
+                            </button>
+                            <button onClick={() => onLaunch('guardiao')} className="w-full bg-slate-800/50 hover:bg-slate-800 active:scale-95 transition-all p-4 rounded-xl border border-slate-700/50 flex items-center gap-4 cursor-pointer text-left">
+                                <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400"><Shield size={20} /></div>
+                                <div><h3 className="font-bold text-slate-200">Guardião</h3><p className="text-xs text-slate-500">Proteja seu dinheiro.</p></div>
+                            </button>
+                            <button onClick={() => onLaunch('gerador')} className="w-full bg-slate-800/50 hover:bg-slate-800 active:scale-95 transition-all p-4 rounded-xl border border-slate-700/50 flex items-center gap-4 cursor-pointer text-left">
+                                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400"><ShieldBan size={20} /></div>
+                                <div><h3 className="font-bold text-slate-200">Gerador de NÃO</h3><p className="text-xs text-slate-500">Recuse pedidos de dinheiro.</p></div>
+                            </button>
+                        </div>
+                    </section>
                 </div>
             );
         }
 
         // ==========================================
-        // ROOT
+        // ROOT: SUPER APP
         // ==========================================
         function SuperApp() {
-            const [active, setActive] = useState(null);
+            const [activeTool, setActiveTool] = useState(null);
+
             return (
                 <>
-                    <InstallPrompt />
-                    {active === null && <Launcher onLaunch={setActive} />}
-                    {active === 'empilhador' && <Empilhador_Tool onExit={() => setActive(null)} />}
-                    {active === 'detector' && <Detector_Tool onExit={() => setActive(null)} />}
-                    {active === 'calc' && <Calculadora_Tool onExit={() => setActive(null)} />}
-                    {active === 'guardiao' && <Guardiao_Tool onExit={() => setActive(null)} />}
-                    {active === 'gerador' && <Gerador_Tool onExit={() => setActive(null)} />}
+                    {activeTool === null && <Launcher onLaunch={setActiveTool} />}
+                    {activeTool === 'empilhador' && <Empilhador_Tool onExit={() => setActiveTool(null)} />}
+                    {activeTool === 'detector' && <Detector_Tool onExit={() => setActiveTool(null)} />}
+                    {activeTool === 'calculadora' && <Calculadora_Tool onExit={() => setActiveTool(null)} />}
+                    {activeTool === 'guardiao' && <Guardiao_Tool onExit={() => setActiveTool(null)} />}
+                    {activeTool === 'gerador' && <Gerador_Tool onExit={() => setActiveTool(null)} />}
                 </>
             );
         }
