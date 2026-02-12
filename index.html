@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Adicionado viewport-fit=cover para melhor suporte a telas cheias -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>10k em Silêncio</title>
     
     <!-- === PWA & CONFIGURAÇÕES GERAIS === -->
@@ -16,8 +17,8 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     
-    <!-- Manifesto atualizado para forçar atualização do ícone -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"10k em Silêncio","short_name":"10k","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#10b981","icons":[{"src":"icon.png?v=3","sizes":"512x512","type":"image/png"}]}'>
+    <!-- Manifesto URL Encoded para compatibilidade total com Android (força a ocultação da barra de URL) -->
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%2210k%20em%20Sil%C3%AAncio%22%2C%22short_name%22%3A%2210k%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%2310b981%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22icon.png%3Fv%3D3%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -95,7 +96,8 @@
             ShoppingBag, Coffee, Smartphone, Car, CreditCard, ShieldCheck, 
             Zap, Clock, Briefcase, Calendar, ShieldBan, Copy, Check, MessageSquare, 
             Shuffle, Banknote, RotateCcw, Settings, XCircle, ArrowLeftRight, Sun, 
-            Percent, RefreshCw, RefreshCcw, BookOpen, AlertCircle, DollarSign, PiggyBank
+            Percent, RefreshCw, RefreshCcw, BookOpen, AlertCircle, DollarSign, PiggyBank,
+            Download, Share, PlusSquare
         } = LucideIcons;
 
         // ==========================================
@@ -2240,8 +2242,81 @@
         // LAUNCHER DO SUPER APP
         // ==========================================
         function Launcher({ onLaunch }) {
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [showInstallBtn, setShowInstallBtn] = useState(false);
+            const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+
+            useEffect(() => {
+                // Checa se já está instalado (standalone)
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+                if (isStandalone) {
+                    setShowInstallBtn(false);
+                    return;
+                }
+
+                // Lógica para Android (Chrome)
+                const handleBeforeInstallPrompt = (e) => {
+                    e.preventDefault();
+                    setDeferredPrompt(e);
+                    setShowInstallBtn(true);
+                };
+
+                window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+                // Lógica para iOS (Safari)
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIOS) {
+                    setShowInstallBtn(true);
+                }
+
+                return () => {
+                    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                };
+            }, []);
+
+            const handleInstallClick = async () => {
+                if (deferredPrompt) {
+                    // Android
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        setDeferredPrompt(null);
+                        setShowInstallBtn(false);
+                    }
+                } else {
+                    // iOS ou outros (exibe instruções)
+                    setShowIOSInstructions(true);
+                }
+            };
+
             return (
-                <div className="w-full min-h-screen bg-slate-900 text-white p-6 animate-fade-in pb-24 font-sans">
+                <div className="w-full min-h-screen bg-slate-900 text-white p-6 animate-fade-in pb-24 font-sans relative">
+                    {/* Modal de Instruções iOS */}
+                    {showIOSInstructions && (
+                        <div className="fixed inset-0 z-[200] bg-slate-900/90 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowIOSInstructions(false)}>
+                            <div className="bg-white text-slate-900 w-full max-w-sm rounded-2xl p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                                <button onClick={() => setShowIOSInstructions(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X size={20} /></button>
+                                <div className="flex justify-center mb-4">
+                                    <div className="bg-slate-100 p-3 rounded-full">
+                                        <Share className="w-8 h-8 text-blue-500" />
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-bold text-center mb-4">Instalar no iPhone</h3>
+                                <ol className="space-y-4 text-sm text-slate-600 mb-6">
+                                    <li className="flex items-center gap-3">
+                                        <span className="flex-shrink-0 w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                                        <span>Toque no botão <strong className="text-slate-900">Compartilhar</strong> <Share className="inline w-3 h-3 ml-1" /> na barra inferior.</span>
+                                    </li>
+                                    <li className="flex items-center gap-3">
+                                        <span className="flex-shrink-0 w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                                        <span>Role para baixo e selecione <strong className="text-slate-900">"Adicionar à Tela de Início"</strong> <PlusSquare className="inline w-3 h-3 ml-1" />.</span>
+                                    </li>
+                                </ol>
+                                <button onClick={() => setShowIOSInstructions(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl">Entendi</button>
+                            </div>
+                        </div>
+                    )}
+
                     <header className="mb-8 mt-4 flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-extrabold tracking-tight text-white">10k em Silêncio</h1>
@@ -2251,6 +2326,27 @@
                             <Crown size={20} />
                         </div>
                     </header>
+
+                    {/* Botão de Instalação (Condicional) */}
+                    {showInstallBtn && (
+                        <div className="mb-8 animate-fade-in">
+                            <button 
+                                onClick={handleInstallClick}
+                                className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white p-4 rounded-2xl shadow-lg border border-indigo-400/30 flex items-center justify-between group active:scale-[0.98] transition-all"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+                                        <Download className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="font-bold text-sm">Instalar App</h3>
+                                        <p className="text-xs text-indigo-100 opacity-90">Acesso rápido e offline.</p>
+                                    </div>
+                                </div>
+                                <ArrowRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    )}
 
                     <section className="mb-8">
                         <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Ferramentas Principais</h2>
